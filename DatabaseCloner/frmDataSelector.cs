@@ -139,8 +139,8 @@ namespace DatabaseCloner {
                         row.Cells[ 0 ].Value.ToString(), 
                         row.Cells[ 1 ].Value.ToString(), 
                         row.Cells[ 2 ].Value.ToString(),
-                        (bool)(( (DataGridViewCheckBoxCell)row.Cells[ 3 ] ).Value) == true,
-                        (bool)(( (DataGridViewCheckBoxCell)row.Cells[ 4 ] ).Value) == true
+                        ( (DataGridViewCheckBoxCell)row.Cells[ 3 ] ).Value != null,
+                        ( (DataGridViewCheckBoxCell)row.Cells[ 4 ] ).Value != null
                 ) );
             }
 

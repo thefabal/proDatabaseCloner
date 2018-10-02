@@ -34,13 +34,16 @@
             this.cbDatabaseDestination = new System.Windows.Forms.ComboBox();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.slInfo = new System.Windows.Forms.ToolStripStatusLabel();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1.SuspendLayout();
+            this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // tbConnectionSource
             // 
             this.tbConnectionSource.BackColor = System.Drawing.SystemColors.Window;
-            this.tbConnectionSource.Location = new System.Drawing.Point(9, 24);
+            this.tbConnectionSource.Location = new System.Drawing.Point(7, 55);
             this.tbConnectionSource.Margin = new System.Windows.Forms.Padding(2);
             this.tbConnectionSource.Name = "tbConnectionSource";
             this.tbConnectionSource.ReadOnly = true;
@@ -51,7 +54,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 7);
+            this.label1.Location = new System.Drawing.Point(7, 38);
             this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(177, 13);
@@ -60,7 +63,7 @@
             // 
             // btnGenerateSource
             // 
-            this.btnGenerateSource.Location = new System.Drawing.Point(415, 22);
+            this.btnGenerateSource.Location = new System.Drawing.Point(413, 53);
             this.btnGenerateSource.Margin = new System.Windows.Forms.Padding(2);
             this.btnGenerateSource.Name = "btnGenerateSource";
             this.btnGenerateSource.Size = new System.Drawing.Size(75, 24);
@@ -71,7 +74,7 @@
             // 
             // btnGenerateDestination
             // 
-            this.btnGenerateDestination.Location = new System.Drawing.Point(415, 81);
+            this.btnGenerateDestination.Location = new System.Drawing.Point(413, 112);
             this.btnGenerateDestination.Margin = new System.Windows.Forms.Padding(2);
             this.btnGenerateDestination.Name = "btnGenerateDestination";
             this.btnGenerateDestination.Size = new System.Drawing.Size(75, 24);
@@ -83,7 +86,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(9, 67);
+            this.label2.Location = new System.Drawing.Point(7, 98);
             this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(196, 13);
@@ -93,7 +96,7 @@
             // tbConnectionDestination
             // 
             this.tbConnectionDestination.BackColor = System.Drawing.SystemColors.Window;
-            this.tbConnectionDestination.Location = new System.Drawing.Point(9, 83);
+            this.tbConnectionDestination.Location = new System.Drawing.Point(7, 114);
             this.tbConnectionDestination.Margin = new System.Windows.Forms.Padding(2);
             this.tbConnectionDestination.Name = "tbConnectionDestination";
             this.tbConnectionDestination.ReadOnly = true;
@@ -103,7 +106,7 @@
             // 
             // btnSelectData
             // 
-            this.btnSelectData.Location = new System.Drawing.Point(415, 132);
+            this.btnSelectData.Location = new System.Drawing.Point(413, 163);
             this.btnSelectData.Margin = new System.Windows.Forms.Padding(2);
             this.btnSelectData.Name = "btnSelectData";
             this.btnSelectData.Size = new System.Drawing.Size(75, 24);
@@ -116,7 +119,7 @@
             // 
             this.cbDatabaseSource.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbDatabaseSource.FormattingEnabled = true;
-            this.cbDatabaseSource.Location = new System.Drawing.Point(266, 24);
+            this.cbDatabaseSource.Location = new System.Drawing.Point(264, 55);
             this.cbDatabaseSource.Margin = new System.Windows.Forms.Padding(2);
             this.cbDatabaseSource.Name = "cbDatabaseSource";
             this.cbDatabaseSource.Size = new System.Drawing.Size(145, 21);
@@ -126,7 +129,7 @@
             // 
             this.cbDatabaseDestination.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbDatabaseDestination.FormattingEnabled = true;
-            this.cbDatabaseDestination.Location = new System.Drawing.Point(266, 83);
+            this.cbDatabaseDestination.Location = new System.Drawing.Point(264, 114);
             this.cbDatabaseDestination.Margin = new System.Windows.Forms.Padding(2);
             this.cbDatabaseDestination.Name = "cbDatabaseDestination";
             this.cbDatabaseDestination.Size = new System.Drawing.Size(145, 21);
@@ -136,7 +139,7 @@
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.slInfo});
-            this.statusStrip1.Location = new System.Drawing.Point(0, 163);
+            this.statusStrip1.Location = new System.Drawing.Point(0, 189);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(499, 22);
             this.statusStrip1.TabIndex = 10002;
@@ -147,12 +150,31 @@
             this.slInfo.Name = "slInfo";
             this.slInfo.Size = new System.Drawing.Size(0, 17);
             // 
+            // menuStrip1
+            // 
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.settingsToolStripMenuItem});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(499, 24);
+            this.menuStrip1.TabIndex = 10003;
+            this.menuStrip1.Text = "menuStrip1";
+            // 
+            // settingsToolStripMenuItem
+            // 
+            this.settingsToolStripMenuItem.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
+            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
+            this.settingsToolStripMenuItem.Text = "Settings";
+            this.settingsToolStripMenuItem.Click += new System.EventHandler(this.settingsToolStripMenuItem_Click);
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(499, 185);
+            this.ClientSize = new System.Drawing.Size(499, 211);
             this.Controls.Add(this.statusStrip1);
+            this.Controls.Add(this.menuStrip1);
             this.Controls.Add(this.cbDatabaseDestination);
             this.Controls.Add(this.cbDatabaseSource);
             this.Controls.Add(this.btnSelectData);
@@ -163,6 +185,7 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.tbConnectionSource);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MainMenuStrip = this.menuStrip1;
             this.Margin = new System.Windows.Forms.Padding(2);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -173,6 +196,8 @@
             this.Load += new System.EventHandler(this.frmMain_Load);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -191,6 +216,8 @@
         private System.Windows.Forms.ComboBox cbDatabaseDestination;
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripStatusLabel slInfo;
+        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
     }
 }
 

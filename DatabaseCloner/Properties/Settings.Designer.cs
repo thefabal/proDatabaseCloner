@@ -34,5 +34,17 @@ namespace DatabaseCloner.Properties {
                 this["database_setting"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int row_per_insert {
+            get {
+                return ((int)(this["row_per_insert"]));
+            }
+            set {
+                this["row_per_insert"] = value;
+            }
+        }
     }
 }
