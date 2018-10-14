@@ -33,6 +33,8 @@ namespace DatabaseCloner {
                     tbDatabaseName.Enabled = false;
                     cbAuthentication.Enabled = true;
                     lblAuthentication.Enabled = true;
+
+                    cbAuthentication_SelectedIndexChanged( null, null );
                 break;
 
                 case "MySQL":

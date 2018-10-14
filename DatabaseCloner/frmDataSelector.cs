@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SqlClient;
+using MySql.Data.MySqlClient;
 
 namespace DatabaseCloner {
     public partial class frmDataSelector: Form {
@@ -32,63 +33,129 @@ namespace DatabaseCloner {
         }
 
         private void frmDataSelector_Load( object sender, EventArgs e ) {
-            frmMain.sqlCon.ChangeDatabase( db_name );
+            switch( database.server_type.ToLower() ) {
+                case "mssql":
+                    database.mssqlCon.ChangeDatabase( db_name );
+                
+                    /**
+                     * Tables
+                    **/
+                    SqlCommand mssqlCom = database.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT s.name, t.name, object_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.type = 'U' ORDER BY t.name";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            dgvTableList.Rows.Add( "table", mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ), true, true );
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get table list.\r\n" + ex.Message );
+                    }
 
-            /**
-             * Tables
-            **/
-            SqlCommand sqlCom = frmMain.sqlCon.CreateCommand();
-            sqlCom.CommandText = "SELECT s.name, t.name, object_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.type = 'U' ORDER BY t.name";
-            try {
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read() ) {
-                    dgvTableList.Rows.Add( "table", sqlReader[ 0 ].ToString(), sqlReader[ 1 ].ToString(), true, true );
-                }
-                sqlReader.Close();
-            } catch( Exception ex ) {
-                MessageBox.Show( "Could not get table list.\r\n" + ex.Message );
-            }
+                   /**
+                     * Views
+                    **/
+                    mssqlCom.CommandText = "SELECT name FROM sys.views";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "view", "", mssqlReader.GetString( 0 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
+                    }
 
-            /**
-             * Views
-            **/
-            sqlCom.CommandText = "SELECT name FROM sys.views";
-            try {
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read()) {
-                    dgvTableList.Rows[ dgvTableList.Rows.Add( "view", "", sqlReader[ 0 ].ToString(), true, false ) ].Cells[ 4 ].ReadOnly = true;
-                }
-                sqlReader.Close();
-            } catch(Exception ex) {
-                MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
-            }
+                    /**
+                     * Functions
+                    **/
+                    mssqlCom.CommandText = "SELECT s.name, o.name FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id WHERE type = 'FN' AND is_ms_shipped = 0";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "function", mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                    mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get function list.\r\n" + ex.Message );
+                    }
 
-            /**
-             * Functions
-            **/
-            sqlCom.CommandText = "SELECT s.name, o.name FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id WHERE type = 'FN' AND is_ms_shipped = 0";
-            try {
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read() ) {
-                    dgvTableList.Rows[ dgvTableList.Rows.Add( "function", sqlReader[ 0 ].ToString(), sqlReader[ 1 ].ToString(), true, false ) ].Cells[ 4 ].ReadOnly = true;
-                }
-                sqlReader.Close();
-            } catch( Exception ex ) {
-                MessageBox.Show( "Could not get function list.\r\n" + ex.Message );
-            }
+                    /**
+                     * Database Triggers
+                    **/
+                    mssqlCom.CommandText = "SELECT name FROM sys.triggers WHERE type = 'TR'";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "trigger", "", mssqlReader.GetString( 0 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                    mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
+                    }
+                break;
 
-            /**
-             * Database Triggers
-            **/
-            sqlCom.CommandText = "SELECT name FROM sys.triggers WHERE type = 'TR'";
-            try {
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read() ) {
-                    dgvTableList.Rows[ dgvTableList.Rows.Add( "trigger", "", sqlReader[ 0 ].ToString(), true, false ) ].Cells[ 4 ].ReadOnly = true;
-                }
-                sqlReader.Close();
-            } catch( Exception ex ) {
-                MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
+                case "mysql":
+                    database.mysqlCon.ChangeDatabase( db_name );
+
+                    /**
+                    * Tables
+                    **/                    
+                    MySqlCommand mysqlCom = database.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + db_name + "' ORDER BY table_name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            dgvTableList.Rows.Add( "table", "", mysqlReader.GetString(0), true, true );
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get table list.\r\n" + ex.Message );
+                    }
+                    
+                    /**
+                     * Views
+                    **/
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.views WHERE table_schema = '" + db_name + "' ORDER BY table_name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "view", "", mysqlReader.GetString( 0 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
+                    }
+
+                    /**
+                     * Functions
+                    **/
+                    mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + db_name + "' ORDER BY name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "function", "", mysqlReader.GetString( 0 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get function list.\r\n" + ex.Message );
+                    }
+
+                    /**
+                     * Database Triggers
+                    **/                    
+                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + db_name + "' ORDER BY trigger_name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            dgvTableList.Rows[ dgvTableList.Rows.Add( "trigger", "", mysqlReader.GetString( 0 ), true, false ) ].Cells[ 4 ].ReadOnly = true;
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not get view list.\r\n" + ex.Message );
+                    }
+                    
+                break;
             }
 
             arrangeCheckboxes();
