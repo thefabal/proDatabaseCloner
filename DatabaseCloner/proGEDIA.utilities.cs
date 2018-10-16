@@ -8,8 +8,76 @@ using MySql.Data.MySqlClient;
 using System.Security.Cryptography;
 using System.IO;
 using System.Threading;
+using System.Globalization;
 
 namespace proGEDIA.utilities {
+    public static class Convert {
+        public static Double toDouble( string value ) {
+            return System.Convert.ToDouble( value, CultureInfo.InvariantCulture );
+        }
+
+        public static DateTime toDateTime( string value ) {
+            string dateformat = string.Empty;
+            DateTime dt = new DateTime();
+
+            if( value.Length == 6 ) {
+                dateformat = "yyMMdd";
+            } else if( value.Length == 10 ) {
+                dateformat = "yyMMddHHmm";
+            } else if( value.Length == 14 ) {
+                dateformat = "yy-MM-dd,HH:mm";
+            } else if( value.Length == 16 ) {
+                dateformat = "dd.MM.yyyy HH:mm";
+            } else if( value.Length == 19 ) {
+                dateformat = "yyyy-MM-dd HH:mm:ss";
+            }
+
+            try {
+                DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt );
+            } catch {
+
+            }
+
+            return dt;
+        }
+
+        public static DateTime toDate( string value ) {
+            string dateformat = string.Empty;
+            DateTime dt = new DateTime();
+
+            if( value.Length == 8 ) {
+                dateformat = "yy-MM-dd";
+            } else if( value.Length == 10 ) {
+                dateformat = "dd.MM.yyyy";
+            }
+
+            try {
+                DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt );
+            } catch {
+
+            }
+
+            return dt;
+        }
+
+        public static TimeSpan toTime( string value ) {
+            string dateformat = string.Empty;
+            TimeSpan ts = new TimeSpan();
+
+            if( value.Length == 8 ) {
+                dateformat = "hh\\:mm\\:ss";
+            }
+
+            try {
+                TimeSpan.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, out ts );
+            } catch {
+
+            }
+
+            return ts;
+        }
+    }
+
     public static class StringExtensions {
         public static string Right( this string str, int length ) {
             if( string.IsNullOrEmpty( str ) ) {
@@ -73,12 +141,12 @@ namespace proGEDIA.utilities {
             byte[ ] data = Encoding.UTF8.GetBytes( password );
             byte[ ] encrypted_data = ProtectedData.Protect( data, null, DataProtectionScope.CurrentUser );
 
-            return Convert.ToBase64String( encrypted_data );
+            return System.Convert.ToBase64String( encrypted_data );
         }
 
         public static string DecryptPassword( string password ) {
             if( password.Length > 0 ) {
-                byte[ ] encrypted_data = Convert.FromBase64String( password );
+                byte[ ] encrypted_data = System.Convert.FromBase64String( password );
                 byte[ ] data = ProtectedData.Unprotect( encrypted_data, null, DataProtectionScope.CurrentUser );
 
                 return Encoding.UTF8.GetString( data );
