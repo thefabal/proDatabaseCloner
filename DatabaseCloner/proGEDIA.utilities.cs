@@ -94,7 +94,7 @@ namespace proGEDIA.utilities {
                 str = string.Empty;
             } else if( str.Length > length ) {
                 str = str.Substring( str.Length - length );
-            } else if( str.Length > length ) {
+            } else if( str.Length < length ) {
                 str = ( new string( repeat, length - str.Length ) ) + str;
             }
 
