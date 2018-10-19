@@ -206,8 +206,8 @@ namespace DatabaseCloner {
                         row.Cells[ 0 ].Value.ToString(), 
                         row.Cells[ 1 ].Value.ToString(), 
                         row.Cells[ 2 ].Value.ToString(),
-                        ( (DataGridViewCheckBoxCell)row.Cells[ 3 ] ).Value != null,
-                        ( (DataGridViewCheckBoxCell)row.Cells[ 4 ] ).Value != null
+                        Convert.ToBoolean( row.Cells[ 3 ].Value ) == true,
+                        Convert.ToBoolean( row.Cells[ 4 ].Value ) == true
                 ) );
             }
 
