@@ -616,7 +616,7 @@ namespace DatabaseCloner {
 
         private bool getUniqueKey( ) {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return true;
             }
 
@@ -676,7 +676,7 @@ namespace DatabaseCloner {
 
         private bool getForeignKey( ) {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return true;
             }
 
