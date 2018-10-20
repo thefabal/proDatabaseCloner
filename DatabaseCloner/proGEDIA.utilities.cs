@@ -16,24 +16,36 @@ namespace proGEDIA.utilities {
             return System.Convert.ToDouble( value, CultureInfo.InvariantCulture );
         }
 
-        public static DateTime toDateTime( string value ) {
+        public static DateTime toDateTime( string value, bool reserverOrder = false ) {
             string dateformat = string.Empty;
-            DateTime dt = new DateTime();
+            DateTime dt = new DateTime( 1900, 1, 1 );
 
             if( value.Length == 6 ) {
                 dateformat = "yyMMdd";
             } else if( value.Length == 10 ) {
-                dateformat = "yyMMddHHmm";
+                if( reserverOrder ) {
+                    dateformat = "ddMMyyHHmm";
+                } else {
+                    dateformat = "yyMMddHHmm";
+                }
             } else if( value.Length == 14 ) {
+                if( value == "00-00-00,00:00" ) {
+                    return dt;
+                }
                 dateformat = "yy-MM-dd,HH:mm";
             } else if( value.Length == 16 ) {
+                if( value == "00.00.0000 00:00" ) {
+                    return dt;
+                }
                 dateformat = "dd.MM.yyyy HH:mm";
             } else if( value.Length == 19 ) {
                 dateformat = "yyyy-MM-dd HH:mm:ss";
             }
 
             try {
-                DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt );
+                if( DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt ) == false ) {
+                    return new DateTime( 1, 1, 1 );
+                }
             } catch {
 
             }
@@ -43,16 +55,20 @@ namespace proGEDIA.utilities {
 
         public static DateTime toDate( string value ) {
             string dateformat = string.Empty;
-            DateTime dt = new DateTime();
+            DateTime dt = new DateTime( 1900, 1, 1 );
 
-            if( value.Length == 8 ) {
+            if( value.Length == 6 ) {
+                dateformat = "ddMMyy";
+            } else if( value.Length == 8 ) {
                 dateformat = "yy-MM-dd";
             } else if( value.Length == 10 ) {
                 dateformat = "dd.MM.yyyy";
             }
 
             try {
-                DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt );
+                if( DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt ) == false ) {
+                    return new DateTime( 1, 1, 1 );
+                }
             } catch {
 
             }
@@ -64,7 +80,9 @@ namespace proGEDIA.utilities {
             string dateformat = string.Empty;
             TimeSpan ts = new TimeSpan();
 
-            if( value.Length == 8 ) {
+            if( value.Length == 6 ) {
+                dateformat = "hhmmss";
+            } else if( value.Length == 8 ) {
                 dateformat = "hh\\:mm\\:ss";
             }
 
