@@ -1189,7 +1189,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_view.schema + "\r\n\r\n";
+                    schema = entry_view.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
@@ -1208,7 +1208,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_function.schema + "\r\n\r\n";
+                    schema = entry_function.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
@@ -1231,7 +1231,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_trigger.schema + "\r\n\r\n";
+                    schema = entry_trigger.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
