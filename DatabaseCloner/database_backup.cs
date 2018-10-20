@@ -83,7 +83,7 @@ namespace DatabaseCloner {
 
         private string getUniqueKey( List<database_uniquekey> uniquekey ) {
             string schema = string.Empty;
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return "";
             }
 
@@ -122,7 +122,7 @@ namespace DatabaseCloner {
 
         private string getForeignKey( List<database_foreignkey> foreignkey ) {
             string schema = string.Empty;
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return "";
             }
 
