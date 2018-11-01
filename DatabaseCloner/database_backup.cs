@@ -83,7 +83,7 @@ namespace DatabaseCloner {
 
         private string getUniqueKey( List<database_uniquekey> uniquekey ) {
             string schema = string.Empty;
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return "";
             }
 
@@ -122,7 +122,7 @@ namespace DatabaseCloner {
 
         private string getForeignKey( List<database_foreignkey> foreignkey ) {
             string schema = string.Empty;
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return "";
             }
 
@@ -616,7 +616,7 @@ namespace DatabaseCloner {
 
         private bool getUniqueKey( ) {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return true;
             }
 
@@ -676,7 +676,7 @@ namespace DatabaseCloner {
 
         private bool getForeignKey( ) {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type != "mssql" ) {
+            if( db.server_type.ToLower() != "mssql" ) {
                 return true;
             }
 
@@ -1189,7 +1189,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_view.schema + "\r\n\r\n";
+                    schema = entry_view.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
@@ -1208,7 +1208,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_function.schema + "\r\n\r\n";
+                    schema = entry_function.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
@@ -1231,7 +1231,7 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    schema = entry_trigger.schema + "\r\n\r\n";
+                    schema = entry_trigger.schema + ";\r\n\r\n";
                 break;
 
                 case "mysql":
