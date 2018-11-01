@@ -136,7 +136,6 @@ namespace DatabaseCloner {
                     MessageBox.Show( "SQLite database engine support does not implemented yet." );
 
                     return;
-                break;
 
                 default:
                     MessageBox.Show( "Please select a database engine." );
