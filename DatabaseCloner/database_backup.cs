@@ -15,16 +15,16 @@ namespace DatabaseCloner {
 
         public event EventHandler<string> updateStatus;
 
-        private Dictionary<string, database_table> table = new Dictionary<string, database_table>();
-        private Dictionary<string, database_view> view = new Dictionary<string, database_view>();
-        private Dictionary<string, database_function> function = new Dictionary<string, database_function>();
-        private Dictionary<string, database_trigger> trigger = new Dictionary<string, database_trigger>();
+        private readonly Dictionary<string, database_table> table = new Dictionary<string, database_table>();
+        private readonly Dictionary<string, database_view> view = new Dictionary<string, database_view>();
+        private readonly Dictionary<string, database_function> function = new Dictionary<string, database_function>();
+        private readonly Dictionary<string, database_trigger> trigger = new Dictionary<string, database_trigger>();
 
         private string message = string.Empty;
         private StreamWriter sw;
-        private proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
-        private proGEDIA.utilities.database db;
-        private int row_per_insert;
+        private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
+        private readonly proGEDIA.utilities.database db;
+        private readonly int row_per_insert;
 
         public database_backup( proGEDIA.utilities.database db, string name, int row_per_insert ) {
             this.db = db;

@@ -16,8 +16,8 @@ namespace DatabaseCloner {
             InitializeComponent();
         }
 
-        private frmMain frmMain;
-        private proGEDIA.utilities.database database;
+        private readonly frmMain frmMain;
+        private readonly proGEDIA.utilities.database database;
 
         private void frmConnectionManager_Load( object sender, EventArgs e ) {
             cbServerType.SelectedIndex = 0;
@@ -123,8 +123,6 @@ namespace DatabaseCloner {
         }
 
         private void btnConnect_Click( object sender, EventArgs e ) {
-            string strConnection = string.Empty;
-
             switch(cbServerType.SelectedItem.ToString()) {
                 case "MsSQL":
                 case "MySQL":
@@ -136,7 +134,6 @@ namespace DatabaseCloner {
                     MessageBox.Show( "SQLite database engine support does not implemented yet." );
 
                     return;
-                break;
 
                 default:
                     MessageBox.Show( "Please select a database engine." );

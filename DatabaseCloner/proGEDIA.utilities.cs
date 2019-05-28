@@ -175,8 +175,8 @@ namespace proGEDIA.utilities {
     }
 
     public class LogWriter {
-        private string log_path = string.Empty;
-        private string prefix = string.Empty;
+        private readonly string log_path = string.Empty;
+        private readonly string prefix = string.Empty;
 
         public LogWriter( string prefix = "" ) {
             log_path = AppDomain.CurrentDomain.BaseDirectory + "\\log\\";
