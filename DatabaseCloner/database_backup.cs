@@ -10,7 +10,7 @@ using System.Data.SQLite;
 
 namespace DatabaseCloner {
     public class database_backup {
-        public string name = string.Empty;
+        public string database_name = string.Empty;
 
         public List<backup_settings> backup_settings = new List<backup_settings>();
 
@@ -27,18 +27,18 @@ namespace DatabaseCloner {
         private readonly proGEDIA.utilities.database db;
         private readonly int row_per_insert;
 
-        public database_backup( proGEDIA.utilities.database db, string name, int row_per_insert ) {
+        public database_backup( proGEDIA.utilities.database db, string database_name, int row_per_insert ) {
             this.db = db;
-            this.name = name;
+            this.database_name = database_name;
             this.row_per_insert = row_per_insert;
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
-                    db.mssqlCon.ChangeDatabase( name );
+                    db.mssqlCon.ChangeDatabase( database_name );
                 break;
 
                 case "mysql":
-                    db.mysqlCon.ChangeDatabase( name );
+                    db.mysqlCon.ChangeDatabase( database_name );
                 break;
 
                 case "sqlite":
@@ -205,7 +205,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + name + "' AND table_name IN(" + tables + ") ORDER BY table_schema";
+                    mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' AND table_name IN(" + tables + ") ORDER BY table_schema";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -305,7 +305,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + name + "' AND table_name IN(" + views + ")";
+                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + database_name + "' AND table_name IN(" + views + ")";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -376,7 +376,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name, param_list, returns, body, definer FROM mysql.proc WHERE db = '" + name + "' AND name IN(" + functions + ")";
+                    mysqlCom.CommandText = "SELECT name, param_list, returns, body, definer FROM mysql.proc WHERE db = '" + database_name + "' AND name IN(" + functions + ")";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -447,7 +447,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + name + "' AND trigger_name IN(" + triggers + ")";
+                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + database_name + "' AND trigger_name IN(" + triggers + ")";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
@@ -480,21 +480,14 @@ namespace DatabaseCloner {
         private bool getColumn( ) {
             this.updateStatus( this, "Generating Table's Column Info" );
 
-            string tables = string.Empty;
-            foreach( KeyValuePair<string, database_table> entry in table ) {
-                tables += "'" + entry.Key + "', ";
-            }
-
-            if( tables.Length == 0 ) {
+            if( table.Count == 0 ) {
                 return true;
-            } else {
-                tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
             }
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id WHERE ta.name IN( " + tables + " ) ORDER BY ta.name, c.column_id";
+                    mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id WHERE ta.name IN( " + string.Join( ", ", table.Keys.ToArray() ) + " ) ORDER BY ta.name, c.column_id";
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
@@ -526,7 +519,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + name + "' AND table_name IN(" + tables + ") ORDER BY table_name, ordinal_position";
+                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + database_name + "' AND table_name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY table_name, ordinal_position";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -554,6 +547,36 @@ namespace DatabaseCloner {
                         this.updateStatus( this, "enableForm" );
 
                         return false;
+                    }
+                break;
+
+                case "sqlite":
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    foreach( string key in table.Keys.ToArray() ) {
+                        sqliteCom.CommandText = "PRAGMA table_info('" + key + "')";
+                        try {
+                            SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                            while( sqliteReader.Read() ) {
+                                table[ sqliteReader.GetString( 1 ) ].columns.Add( new database_column() {
+                                    name = sqliteReader.GetString( 1 ),
+                                    column_default = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
+                                    type = sqliteReader.GetString( 2 ),
+                                    is_nullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
+                                    is_identity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
+                                });
+                            }
+                            sqliteReader.Close();
+                        } catch(Exception ex) {
+                            log.LogWrite( "getColumn" );
+                            log.LogWrite( ex.Message );
+
+                            this.message = ex.Message;
+
+                            this.updateStatus( this, "Error : " + ex.Message );
+                            this.updateStatus( this, "enableForm" );
+
+                            return false;
+                        }
                     }
                 break;
             }
@@ -619,7 +642,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + name + "' ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + database_name + "' ORDER BY table_name";
                     try {
                         string pre = string.Empty;
 
@@ -1311,7 +1334,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + name + "' ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' ORDER BY table_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -1347,7 +1370,7 @@ namespace DatabaseCloner {
                 case "mssql":
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT name FROM sys.views";
-                    try {
+                try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
                             tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
@@ -1360,7 +1383,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name FROM sys.views ORDER BY name";
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.views WHERE table_schema = '" + database_name + "' ORDER BY table_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -1409,7 +1432,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + name + "' ORDER BY name";
+                    mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + database_name + "' ORDER BY name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -1449,7 +1472,7 @@ namespace DatabaseCloner {
 
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + name + "' ORDER BY trigger_name";
+                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + database_name + "' ORDER BY trigger_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
