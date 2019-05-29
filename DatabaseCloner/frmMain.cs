@@ -12,6 +12,7 @@ using System.IO;
 using System.Threading;
 
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 
 namespace DatabaseCloner {
@@ -108,6 +109,27 @@ namespace DatabaseCloner {
                     } catch(Exception ex) {
                         MessageBox.Show( "Could not get database list.\r\n" + ex.Message );
                     }
+                break;
+
+                case "sqlite":
+                    if( db_source.sqliteCon != null && db_source.sqliteCon.State == ConnectionState.Open ) {
+                        db_source.sqliteCon.Close();
+                    }
+
+                    if( db_source.sqliteCon == null )
+                        db_source.sqliteCon = new SQLiteConnection();
+
+                    db_source.sqliteCon.ConnectionString = db.getConnectionString();
+                    try {
+                        db_source.sqliteCon.Open();
+                    } catch( Exception ex ) {
+                        MessageBox.Show( "Could not connect to database.\r\n" + ex.Message );
+
+                        return;
+                    }
+
+                    cb.Items.Add( db_source.server_name );
+                    cb.SelectedIndex = 0;
                 break;
             }
         }
@@ -211,9 +233,9 @@ namespace DatabaseCloner {
             database.Add( set );
         }
 
-        public void Remove( string server_type, string server_name, string user_name ) {
+        public void Remove( string server_type, string server_name, string database_file, string user_name ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
-                if( item.value.Compare( server_type, server_name, user_name ) ) {
+                if( item.value.Compare( server_type, server_name, database_file, user_name ) ) {
                     database.RemoveAt( item.i );
 
                     return;
@@ -243,12 +265,16 @@ namespace DatabaseCloner {
                     database[ i ].user_pass = string.Empty;
                 }
 
-                if( database[i].mssqlCon != null ) {
+                if( database[ i ].mssqlCon != null ) {
                     database[ i ].mssqlCon = null;
                 }
 
-                if( database[i].mysqlCon != null ) {
+                if( database[ i ].mysqlCon != null ) {
                     database[ i ].mysqlCon = null;
+                }
+
+                if( database[ i ].sqliteCon != null ) {
+                    database[ i ].sqliteCon = null;
                 }
             }
 

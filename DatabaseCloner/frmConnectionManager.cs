@@ -30,6 +30,9 @@ namespace DatabaseCloner {
                     lblServiceName.Enabled = false;
                     tbServiceName.Enabled = false;
                     lblDatabaseName.Enabled = false;
+                    lblDatabaseFile.Enabled = false;
+                    tbDatabaseFile.Enabled = false;
+                    btnBrowse.Enabled = false;
                     tbDatabaseName.Enabled = false;
                     cbAuthentication.Enabled = true;
                     lblAuthentication.Enabled = true;
@@ -43,9 +46,14 @@ namespace DatabaseCloner {
                     tbServiceName.Enabled = false;
                     lblDatabaseName.Enabled = true;
                     tbDatabaseName.Enabled = true;
+                    lblDatabaseFile.Enabled = false;
+                    tbDatabaseFile.Enabled = false;
+                    btnBrowse.Enabled = false;
                     cbAuthentication.Enabled = false;
                     lblAuthentication.Enabled = false;
+                    lblUserName.Enabled = true;
                     tbUserName.Enabled = true;
+                    lblUserPassword.Enabled = true;
                     tbUserPassword.Enabled = true;
                 break;
 
@@ -55,14 +63,32 @@ namespace DatabaseCloner {
                     tbServiceName.Enabled = true;
                     lblDatabaseName.Enabled = false;
                     tbDatabaseName.Enabled = false;
+                    lblDatabaseFile.Enabled = false;
+                    tbDatabaseFile.Enabled = false;
+                    btnBrowse.Enabled = false;
                     cbAuthentication.Enabled = false;
                     lblAuthentication.Enabled = false;
+                    lblUserName.Enabled = true;
                     tbUserName.Enabled = true;
+                    lblUserPassword.Enabled = true;
                     tbUserPassword.Enabled = true;
                 break;
 
                 case "SQLite":
-                    MessageBox.Show( "SQLite database engine support does not implemented yet." );
+                    tbServerPort.Enabled = false;
+                    lblServiceName.Enabled = false;
+                    tbServiceName.Enabled = false;
+                    lblDatabaseName.Enabled = false;
+                    tbDatabaseName.Enabled = false;
+                    lblDatabaseFile.Enabled = true;
+                    tbDatabaseFile.Enabled = true;
+                    btnBrowse.Enabled = true;
+                    cbAuthentication.Enabled = false;
+                    lblAuthentication.Enabled = false;
+                    lblUserName.Enabled = false;
+                    tbUserName.Enabled = false;
+                    lblUserPassword.Enabled = false;
+                    tbUserPassword.Enabled = false;
                 break;
 
                 default:
@@ -102,6 +128,7 @@ namespace DatabaseCloner {
             tbServerPort.Text = item.server_port;
             tbServiceName.Text = item.service_name;
             tbDatabaseName.Text = item.database_name;
+            tbDatabaseFile.Text = item.database_file;
             cbAuthentication.SelectedIndex = item.authentication;
             tbUserName.Text = item.user_name;
             tbUserPassword.Text = item.user_pass;
@@ -110,10 +137,14 @@ namespace DatabaseCloner {
 
         private void cbAuthentication_SelectedIndexChanged( object sender, EventArgs e ) {
             if(cbAuthentication.SelectedIndex == 0) {
+                lblUserName.Enabled = false;
                 tbUserName.Enabled = false;
+                lblUserPassword.Enabled = false;
                 tbUserPassword.Enabled = false;
             } else {
+                lblUserName.Enabled = true;
                 tbUserName.Enabled = true;
+                lblUserPassword.Enabled = true;
                 tbUserPassword.Enabled = true;
             }
         }
@@ -127,13 +158,9 @@ namespace DatabaseCloner {
                 case "MsSQL":
                 case "MySQL":
                 case "Oracle":
+                case "SQLite":
 
                 break;
-
-                case "SQLite":
-                    MessageBox.Show( "SQLite database engine support does not implemented yet." );
-
-                    return;
 
                 default:
                     MessageBox.Show( "Please select a database engine." );
@@ -141,14 +168,27 @@ namespace DatabaseCloner {
                     return;
             }
 
-            database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, cbAuthentication.SelectedIndex, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
+            database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, tbDatabaseFile.Text, cbAuthentication.SelectedIndex, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
             frmMain.settings.Add( database );
 
             this.DialogResult = DialogResult.OK;
         }
 
         private void btnDelete_Click( object sender, EventArgs e ) {
-            frmMain.settings.Remove( cbServerType.Text, cbServerName.Text, tbUserName.Text );
+            frmMain.settings.Remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
+        }
+
+        private void BtnBrowse_Click( object sender, EventArgs e ) {
+            OpenFileDialog openFileDialog = new OpenFileDialog() {
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            if( openFileDialog.ShowDialog() == DialogResult.OK ) {
+                tbDatabaseFile.Text = openFileDialog.FileName;
+
+                cbServerName.Text = System.IO.Path.GetFileNameWithoutExtension( openFileDialog.FileName );
+            }
         }
     }
 }

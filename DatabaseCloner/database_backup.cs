@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Data.SqlClient;
 using MySql.Data.MySqlClient;
+using System.Data.SQLite;
 
 namespace DatabaseCloner {
     public class database_backup {
@@ -30,6 +31,20 @@ namespace DatabaseCloner {
             this.db = db;
             this.name = name;
             this.row_per_insert = row_per_insert;
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql":
+                    db.mssqlCon.ChangeDatabase( name );
+                break;
+
+                case "mysql":
+                    db.mysqlCon.ChangeDatabase( name );
+                break;
+
+                case "sqlite":
+
+                break;
+            }
         }
 
         public bool getDatabase( ) {
@@ -165,6 +180,7 @@ namespace DatabaseCloner {
                 case "mssql":
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, t.name, t.lob_data_space_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.name IN(" + tables + ") ORDER BY t.name";
+
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
@@ -190,6 +206,7 @@ namespace DatabaseCloner {
                 case "mysql":
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + name + "' AND table_name IN(" + tables + ") ORDER BY table_schema";
+
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
@@ -203,6 +220,30 @@ namespace DatabaseCloner {
                         }
                         mysqlReader.Close();
                     } catch( Exception ex ) {
+                        log.LogWrite( "getTable" );
+                        log.LogWrite( ex.Message );
+
+                        this.message = ex.Message;
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                break;
+
+                case "sqlite":
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT name FROM sqlite_master";
+
+                    try {
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        if( sqliteReader.HasRows ) {
+                            while( sqliteReader.Read()) {
+                                table.Add( sqliteReader.GetString( 0 ), new database_table( "", sqliteReader.GetString( 0 ) ) );
+                            }
+                        }
+                        sqliteReader.Close();
+                    } catch(Exception ex) {
                         log.LogWrite( "getTable" );
                         log.LogWrite( ex.Message );
 
@@ -1249,6 +1290,193 @@ namespace DatabaseCloner {
 
             return true;
         }
+
+        public List<table_entry> getTableList() {
+            List<table_entry> tableList = new List<table_entry>();
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql":
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT s.name, t.name, object_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.type = 'U' ORDER BY t.name";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ));
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get table list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "mysql":
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + name + "' ORDER BY table_name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get table list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "sqlite":
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name";
+                    try {
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            tableList.Add( new table_entry( "", sqliteReader.GetString(0) ) );
+                        }
+                    } catch(Exception ex) {
+                        throw new Exception( "Could not get table list.\r\n" + ex.Message );
+                    }
+                break;
+            }
+
+            return tableList;
+        }
+
+        public List<table_entry> getViewList() {
+            List<table_entry> tableList = new List<table_entry>();
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql":
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT name FROM sys.views";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get view list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "mysql":
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT name FROM sys.views ORDER BY name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get view list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "sqlite":
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'view' ORDER BY name";
+                    try {
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
+                        }
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get table list.\r\n" + ex.Message );
+                    }
+                break;
+            }
+
+            return tableList;
+        }
+
+        public List<table_entry> getFunctionList() {
+            List<table_entry> tableList = new List<table_entry>();
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql":
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT s.name, o.name FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id WHERE type = 'FN' AND is_ms_shipped = 0 ORDER BY s.name, o.name";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get function list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "mysql":
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + name + "' ORDER BY name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get function list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "sqlite":
+
+                break;
+            }
+
+            return tableList;
+        }
+
+        public List<table_entry> getTriggerList() {
+            List<table_entry> tableList = new List<table_entry>();
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql":
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT name FROM sys.triggers WHERE type = 'TR' ORDER BY name";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "mysql":
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + name + "' ORDER BY trigger_name";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        while( mysqlReader.Read() ) {
+                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
+                    }
+                break;
+
+                case "sqlite":
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name";
+                    try {
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
+                        }
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
+                    }
+                break;
+            }
+
+            return tableList;
+        }
     }
 
     public class database_table {
@@ -1384,6 +1612,16 @@ namespace DatabaseCloner {
 
         public database_foreignkey( ) {
 
+        }
+    }
+
+    public class table_entry {
+        public string schema { get; set; } = "";
+        public string name { get; set; } = "";
+
+        public table_entry( string schema, string name) {
+            this.schema = schema;
+            this.name = name;
         }
     }
 

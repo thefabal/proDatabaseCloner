@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 using System.Security.Cryptography;
 using System.IO;
@@ -210,6 +211,7 @@ namespace proGEDIA.utilities {
         public string server_port { get; set; } = "";
         public string service_name { get; set; } = "";
         public string database_name { get; set; } = "";
+        public string database_file { get; set; } = "";
         public int authentication { get; set; } = 0;
         public string user_name { get; set; } = "";
         public string user_pass { get; set; } = "";
@@ -217,17 +219,19 @@ namespace proGEDIA.utilities {
 
         public SqlConnection mssqlCon;
         public MySqlConnection mysqlCon;
+        public SQLiteConnection sqliteCon;
 
         public database( ) {
 
         }
 
-        public void Set( string server_type, string server_name, string server_port, string service_name, string database_name, int authentication, string user_name, string user_pass, bool remember_password ) {
+        public void Set( string server_type, string server_name, string server_port, string service_name, string database_name, string database_file, int authentication, string user_name, string user_pass, bool remember_password ) {
             this.server_type = server_type;
             this.server_name = server_name;
             this.server_port = server_port;
             this.service_name = service_name;
             this.database_name = database_name;
+            this.database_file = database_file;
             this.authentication = authentication;
             this.user_name = user_name;
             this.user_pass = user_pass;
@@ -238,31 +242,36 @@ namespace proGEDIA.utilities {
             string connectionString = string.Empty;
             switch( server_type.ToLower() ) {
                 case "mssql":
-                // MultipleActiveResultSets=true
-                if( authentication == 0 )
-                    connectionString = "Data Source=" + server_name + ";Integrated Security=SSPI;";
-                else
-                    connectionString = "Data Source=" + server_name + ";User id=" + user_name + ";Password=" + user_pass + ";";
+                    // MultipleActiveResultSets=true
+                    if( authentication == 0 )
+                        connectionString = "Data Source=" + server_name + ";Integrated Security=SSPI;";
+                    else
+                        connectionString = "Data Source=" + server_name + ";User id=" + user_name + ";Password=" + user_pass + ";";
                 break;
 
                 case "mysql":
-                connectionString = "Server=" + server_name + ";";
-                if( server_port.Length != 0 ) {
-                    connectionString += "Port=" + server_port + ";";
-                }
-                // connectionString += "Database=myDataBase;";
-                if( user_name.Length != 0 || user_pass.Length != 0 ) {
-                    connectionString += "Uid=" + user_name + ";Pwd=" + user_pass + ";";
-                }
-                connectionString += "SslMode=none";
+                    connectionString = "Server=" + server_name + ";";
+                    if( server_port.Length != 0 ) {
+                        connectionString += "Port=" + server_port + ";";
+                    }
+                    
+                    // connectionString += "Database=myDataBase;";
+                    if( user_name.Length != 0 || user_pass.Length != 0 ) {
+                        connectionString += "Uid=" + user_name + ";Pwd=" + user_pass + ";";
+                    }
+                    connectionString += "SslMode=none";
+                break;
+
+                case "sqlite":
+                    connectionString = "Data Source=" + database_file + ";Version=3;";
                 break;
             }
 
             return connectionString;
         }
 
-        public bool Compare( string server_type, string server_name, string user_name ) {
-            if( this.server_type == server_type && this.service_name == service_name && this.user_name == user_name ) {
+        public bool Compare( string server_type, string server_name, string database_file, string user_name ) {
+            if( this.server_type == server_type && this.server_name == server_name && this.database_file == database_file && this.user_name == user_name ) {
                 return true;
             } else {
                 return false;
@@ -270,7 +279,7 @@ namespace proGEDIA.utilities {
         }
 
         public bool Compare( database set ) {
-            if( server_type == set.server_type && service_name == set.service_name && user_name == set.user_name ) {
+            if( server_type == set.server_type && service_name == set.service_name && database_file == set.database_file && user_name == set.user_name ) {
                 return true;
             } else {
                 return false;
