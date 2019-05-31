@@ -485,7 +485,7 @@ namespace DatabaseCloner {
             }
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id WHERE ta.name IN( " + string.Join( ", ", table.Keys.ToArray() ) + " ) ORDER BY ta.name, c.column_id";
                     try {
@@ -494,7 +494,7 @@ namespace DatabaseCloner {
                             table[ mssqlReader.GetString( 0 ) ].columns.Add( new database_column() {
                                 name = mssqlReader.GetString( 1 ),
                                 type = mssqlReader.GetString( 2 ),
-                                maxlen = ( mssqlReader.IsDBNull( 3 ) ) ? ( null ) : ( (Int32?)mssqlReader.GetInt32( 3 ) ),
+                                maxlen = ( mssqlReader.IsDBNull( 3 ) ) ? ( null ) : ( ( Int32? )mssqlReader.GetInt32( 3 ) ),
                                 is_nullable = mssqlReader.GetBoolean( 4 ),
                                 is_identity = mssqlReader.GetBoolean( 5 )
                             } );
@@ -514,10 +514,11 @@ namespace DatabaseCloner {
                         this.updateStatus( this, "enableForm" );
 
                         return false;
-                    }            
+                    }
+                }           
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + database_name + "' AND table_name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY table_name, ordinal_position";
                     try {
@@ -525,11 +526,11 @@ namespace DatabaseCloner {
                         while( mysqlReader.Read() ) {
                             table[ mysqlReader.GetString( 0 ) ].columns.Add( new database_column() {
                                 name = mysqlReader.GetString( 1 ),
-                                column_default = ( mysqlReader.IsDBNull( 2 ) )?( "NULL" ):( mysqlReader.GetString( 2 ) ),
+                                column_default = ( mysqlReader.IsDBNull( 2 ) ) ? ( "NULL" ) : ( mysqlReader.GetString( 2 ) ),
                                 type = mysqlReader.GetString( 4 ),
-                                is_nullable = ( mysqlReader.GetString( 3 ) == "YES") ?( true ):( false ),
-                                collation_name = ( mysqlReader.IsDBNull( 5 ) )?( "" ):( mysqlReader.GetString( 5 ) ),
-                                is_identity = ( mysqlReader.GetString( 6 ).ToLower() == "auto_increment" ) ?( true ):( false )
+                                is_nullable = ( mysqlReader.GetString( 3 ) == "YES" ) ? ( true ) : ( false ),
+                                collation_name = ( mysqlReader.IsDBNull( 5 ) ) ? ( "" ) : ( mysqlReader.GetString( 5 ) ),
+                                is_identity = ( mysqlReader.GetString( 6 ).ToLower() == "auto_increment" ) ? ( true ) : ( false )
                             } );
 
                             if( mysqlReader.GetString( 6 ).ToLower() == "auto_increment" ) {
@@ -548,25 +549,26 @@ namespace DatabaseCloner {
 
                         return false;
                     }
+                }
                 break;
 
-                case "sqlite":
+                case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     foreach( string key in table.Keys.ToArray() ) {
                         sqliteCom.CommandText = "PRAGMA table_info('" + key + "')";
                         try {
                             SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                             while( sqliteReader.Read() ) {
-                                table[ sqliteReader.GetString( 1 ) ].columns.Add( new database_column() {
+                                table[ key ].columns.Add( new database_column() {
                                     name = sqliteReader.GetString( 1 ),
                                     column_default = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
                                     type = sqliteReader.GetString( 2 ),
                                     is_nullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
                                     is_identity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
-                                });
+                                } );
                             }
                             sqliteReader.Close();
-                        } catch(Exception ex) {
+                        } catch( Exception ex ) {
                             log.LogWrite( "getColumn" );
                             log.LogWrite( ex.Message );
 
@@ -578,6 +580,7 @@ namespace DatabaseCloner {
                             return false;
                         }
                     }
+                }
                 break;
             }
 
@@ -587,21 +590,14 @@ namespace DatabaseCloner {
         private bool getConstraint( ) {
             this.updateStatus( this, "Generating Table's Constraint Info" );
 
-            string tables = string.Empty;
-            foreach( KeyValuePair<string, database_table> entry in table ) {
-                tables += "'" + entry.Key + "', ";
-            }
-
-            if( tables.Length == 0 ) {
+            if( table.Count == 0 ) {
                 return true;
-            } else {
-                tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
             }
 
             switch( db.server_type.ToLower() ) {
                 case "mssql":
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT t.name, k.name AS key_name, k.type AS key_type, c.name AS column_name, i.type, ic.is_descending_key, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.key_constraints AS k INNER JOIN sys.tables AS t ON k.parent_object_id = t.object_id INNER JOIN sys.indexes AS i ON i.object_id = t.object_id AND i.name = k.name INNER JOIN sys.schemas AS s ON k.schema_id = s.schema_id INNER JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE k.is_ms_shipped = 0 AND t.name IN(" + tables + ") ORDER BY t.name, k.type, k.name";
+                    mssqlCom.CommandText = "SELECT t.name, k.name AS key_name, k.type AS key_type, c.name AS column_name, i.type, ic.is_descending_key, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.key_constraints AS k INNER JOIN sys.tables AS t ON k.parent_object_id = t.object_id INNER JOIN sys.indexes AS i ON i.object_id = t.object_id AND i.name = k.name INNER JOIN sys.schemas AS s ON k.schema_id = s.schema_id INNER JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE k.is_ms_shipped = 0 AND t.name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY t.name, k.type, k.name";
                     try {
                         string pre = string.Empty;
 
@@ -740,62 +736,97 @@ namespace DatabaseCloner {
 
         private bool getForeignKey( ) {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type.ToLower() != "mssql" ) {
+
+            if( table.Count == 0 ) {
                 return true;
             }
 
-            string tables = string.Empty;
-            foreach( KeyValuePair<string, database_table> entry in table ) {
-                tables += "'" + entry.Key + "', ";
-            }
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand sqlCom = db.mssqlCon.CreateCommand();
+                    sqlCom.CommandText = "SELECT pc.name AS parent_tname, sf.name AS key_schema, f.name AS key_name, spc.name AS parent_tschema, sc.name AS parent_cname, spr.name AS reference_tschema, pr.name AS reference_tname, sr.name AS reference_cname FROM sys.foreign_keys f INNER JOIN sys.schemas AS sf ON f.schema_id = sf.schema_id INNER JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id INNER JOIN sys.columns AS sc ON k.parent_object_id = sc.object_id AND k.parent_column_id = sc.column_id INNER JOIN sys.columns AS sr ON k.referenced_object_id = sr.object_id AND k.referenced_column_id = sr.column_id INNER JOIN sys.tables pc ON pc.object_id = f.parent_object_id INNER JOIN sys.tables pr ON pr.object_id = f.referenced_object_id INNER JOIN sys.schemas AS spc ON pc.schema_id = spc.schema_id INNER JOIN sys.schemas AS spr ON pr.schema_id = spr.schema_id WHERE pc.name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY pc.name, f.name, k.constraint_column_id";
 
-            if( tables.Length == 0 ) {
-                return true;
-            } else {
-                tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
-            }
+                    try {
+                        string pre = string.Empty;
 
-            SqlCommand sqlCom = db.mssqlCon.CreateCommand();
-            sqlCom.CommandText = "SELECT pc.name AS parent_tname, sf.name AS key_schema, f.name AS key_name, spc.name AS parent_tschema, sc.name AS parent_cname, spr.name AS reference_tschema, pr.name AS reference_tname, sr.name AS reference_cname FROM sys.foreign_keys f INNER JOIN sys.schemas AS sf ON f.schema_id = sf.schema_id INNER JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id INNER JOIN sys.columns AS sc ON k.parent_object_id = sc.object_id AND k.parent_column_id = sc.column_id INNER JOIN sys.columns AS sr ON k.referenced_object_id = sr.object_id AND k.referenced_column_id = sr.column_id INNER JOIN sys.tables pc ON pc.object_id = f.parent_object_id INNER JOIN sys.tables pr ON pr.object_id = f.referenced_object_id INNER JOIN sys.schemas AS spc ON pc.schema_id = spc.schema_id INNER JOIN sys.schemas AS spr ON pr.schema_id = spr.schema_id WHERE pc.name IN(" + tables + ") ORDER BY pc.name, f.name, k.constraint_column_id";
-            try {
-                string pre = string.Empty;
+                        SqlDataReader sqlReader = sqlCom.ExecuteReader();
+                        while( sqlReader.Read() ) {
+                            if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
+                                if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Contains( sqlReader.GetString( 4 ) ) == false ) {
+                                    table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Add( sqlReader.GetString( 4 ) );
+                                }
 
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read() ) {
-                    if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
-                        if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Contains( sqlReader.GetString( 4 ) ) == false ) {
-                            table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Add( sqlReader.GetString( 4 ) );
+                                if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Contains( sqlReader.GetString( 7 ) ) == false ) {
+                                    table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Add( sqlReader.GetString( 7 ) );
+                                }
+                            } else {
+                                table[ sqlReader.GetString( 0 ) ].foreignkey.Add( new database_foreignkey() {
+                                    name = sqlReader.GetString( 2 ),
+                                    schema = sqlReader.GetString( 3 ),
+                                    column = new List<string>() { sqlReader.GetString( 4 ) },
+                                    pschema = sqlReader.GetString( 1 ),
+                                    ptable = sqlReader.GetString( 0 ),
+                                    rschema = sqlReader.GetString( 5 ),
+                                    rtable = sqlReader.GetString( 6 ),
+                                    rcolumn = new List<string>() { sqlReader.GetString( 7 ) }
+                                } );
+
+                                pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
+                            }
                         }
+                        sqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getForeignKey" );
+                        log.LogWrite( ex.Message );
 
-                        if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Contains( sqlReader.GetString( 7 ) ) == false ) {
-                            table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Add( sqlReader.GetString( 7 ) );
-                        }
-                    } else {
-                        table[ sqlReader.GetString( 0 ) ].foreignkey.Add( new database_foreignkey() {
-                            name = sqlReader.GetString( 2 ),
-                            schema = sqlReader.GetString( 3 ),
-                            column = new List<string>() { sqlReader.GetString( 4 ) },
-                            pschema = sqlReader.GetString( 1 ),
-                            ptable = sqlReader.GetString( 0 ),
-                            rschema = sqlReader.GetString( 5 ),
-                            rtable = sqlReader.GetString( 6 ),
-                            rcolumn = new List<string>() { sqlReader.GetString( 7 ) }
-                        } );
+                        this.message = ex.Message;
 
-                        pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
                     }
                 }
-                sqlReader.Close();
-            } catch( Exception ex ) {
-                log.LogWrite( "getForeignKey" );
-                log.LogWrite( ex.Message );
+                break;
 
-                this.message = ex.Message;
+                case "mysql":
 
-                this.updateStatus( this, "Error : " + ex.Message );
-                this.updateStatus( this, "enableForm" );
+                break;
 
-                return false;
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    foreach( string key in table.Keys.ToArray() ) {
+                        sqliteCom.CommandText = "PRAGMA foreign_key_list('" + key + "')";
+                        try {
+                            SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                            while( sqliteReader.Read() ) {
+                                table[ key ].foreignkey.Add( new database_foreignkey() {
+                                    column = new List<string>() { sqliteReader.GetString( 3 ) }
+                                } );
+
+                                table[ key ].references.Add( new database_references() {
+                                    table = sqliteReader.GetString( 2 ),
+                                    column = sqliteReader.GetString( 4 ),
+                                    on_update = sqliteReader.GetString( 5 ),
+                                    on_delete = sqliteReader.GetString( 6 )
+                                } );
+                            }
+
+                            sqliteReader.Close();
+                        } catch( Exception ex ) {
+                            log.LogWrite( "getForeignKey" );
+                            log.LogWrite( ex.Message );
+
+                            this.message = ex.Message;
+
+                            this.updateStatus( this, "Error : " + ex.Message );
+                            this.updateStatus( this, "enableForm" );
+
+                            return false;
+                        }
+                    }
+                }
+                break;
             }
 
             return true;
@@ -973,7 +1004,7 @@ namespace DatabaseCloner {
             Type[ ] tof;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     this.updateStatus( this, "Generating Table's Data ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
@@ -1018,47 +1049,57 @@ namespace DatabaseCloner {
                                         schema += "NULL";
                                     } else {
                                         switch( tof[ i ].Name ) {
-                                            case "String":
+                                            case "String": {
                                                 schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( mssqlReader.GetString( i ) ) + "'";
+                                            }
                                             break;
 
-                                            case "Date":
+                                            case "Date": {
                                                 schema += "'" + mssqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd" ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "DateTime":
+                                            case "DateTime": {
                                                 schema += "'" + mssqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "Boolean":
-                                                schema += ( mssqlReader.GetBoolean( i ) ) ? ("1") : ("0");
+                                            case "Boolean": {
+                                                schema += ( mssqlReader.GetBoolean( i ) ) ? ( "1" ) : ( "0" );
+                                            }                                            
                                             break;
 
-                                            case "Int16":
+                                            case "Int16": {
                                                 schema += "" + mssqlReader.GetInt16( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "Int32":
+                                            case "Int32": {
                                                 schema += "" + mssqlReader.GetInt32( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "Double":
+                                            case "Double": {
                                                 schema += "" + mssqlReader.GetDouble( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "Single":
+                                            case "Single": {
                                                 schema += "'" + mssqlReader.GetFloat( i ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "Decimal":
+                                            case "Decimal": {
                                                 schema += "" + mssqlReader.GetDecimal( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "Byte":
+                                            case "Byte": {
                                                 schema += "'" + mssqlReader.GetByte( i ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "Byte[]":
+                                            case "Byte[]": {
                                                 long size = mssqlReader.GetBytes( i, 0, null, 0, 0 );
                                                 byte[ ] result = new byte[ size ];
                                                 int bufferSize = 1024;
@@ -1071,10 +1112,12 @@ namespace DatabaseCloner {
                                                 }
 
                                                 schema += "'0x" + proGEDIA.utilities.StringExtensions.ByteArrayToString( result ) + "'";
+                                            }
                                             break;
 
-                                            default:
+                                            default: {
                                                 schema += "'#" + tof[ i ].Name + "#'";
+                                            }                                            
                                             break;
                                         }
                                     }
@@ -1110,7 +1153,7 @@ namespace DatabaseCloner {
                         }
 
                         mssqlReader.Close();
-                    } catch(Exception ex) {
+                    } catch( Exception ex ) {
                         log.LogWrite( "getTableData" );
                         log.LogWrite( ex.Message );
 
@@ -1121,9 +1164,10 @@ namespace DatabaseCloner {
 
                         return false;
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     this.updateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
 
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
@@ -1164,42 +1208,51 @@ namespace DatabaseCloner {
                                         schema += "NULL";
                                     } else {
                                         switch( tof[ i ].Name ) {
-                                            case "String":
+                                            case "String": {
                                                 schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( mysqlReader.GetString( i ) ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "DateTime":
+                                            case "DateTime": {
                                                 schema += "'" + mysqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'";
+                                            }                                            
                                             break;
 
                                             case "UInt16":
-                                            case "Int16":
+                                            case "Int16": {
                                                 schema += "" + mysqlReader.GetInt16( i ) + "";
+                                            }                                            
                                             break;
 
                                             case "UInt32":
-                                            case "Int32":
+                                            case "Int32": {
                                                 schema += "" + mysqlReader.GetInt32( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "Double":
+                                            case "Double": {
                                                 schema += "" + mysqlReader.GetDouble( i ) + "";
+                                            }                                            
                                             break;
 
-                                            case "SByte":
+                                            case "SByte": {
                                                 schema += "'" + mysqlReader.GetSByte( i ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "Byte":
+                                            case "Byte": {
                                                 schema += "'" + mysqlReader.GetByte( i ) + "'";
+                                            }                                            
                                             break;
 
-                                            case "Boolean":
+                                            case "Boolean": {
                                                 schema += ( mysqlReader.GetBoolean( i ) ) ? ( "1" ) : ( "0" );
+                                            }                                            
                                             break;
 
-                                            default:
+                                            default: {
                                                 schema += "'#" + tof[ i ].Name + "#'";
+                                            }                                            
                                             break;
                                         }
                                     }
@@ -1231,7 +1284,7 @@ namespace DatabaseCloner {
                         }
 
                         mysqlReader.Close();
-                    } catch(Exception ex) {
+                    } catch( Exception ex ) {
                         log.LogWrite( "getTableData" );
                         log.LogWrite( ex.Message );
 
@@ -1242,6 +1295,7 @@ namespace DatabaseCloner {
 
                         return false;
                     }
+                }
                 break;
             }
 
@@ -1520,6 +1574,9 @@ namespace DatabaseCloner {
         public List<database_uniquekey> uniquekey = new List<database_uniquekey>();
         public List<database_foreignkey> foreignkey = new List<database_foreignkey>();
 
+        /* SQLite */
+        public List<database_references> references = new List<database_references>();
+
         public database_table( string schema, string name ) {
             this.schema = schema;
             this.name = name;
@@ -1636,6 +1693,13 @@ namespace DatabaseCloner {
         public database_foreignkey( ) {
 
         }
+    }
+
+    public class database_references {
+        public string table { get; set; }
+        public string column { get; set; }
+        public string on_update { get; set; }
+        public string on_delete { get; set; }
     }
 
     public class table_entry {
