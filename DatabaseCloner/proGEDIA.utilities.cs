@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Data.SqlClient;
-using System.Data.SQLite;
-using MySql.Data.MySqlClient;
 using System.Security.Cryptography;
 using System.IO;
 using System.Threading;
 using System.Globalization;
+
+using System.Data.SqlClient;
+using System.Data.SQLite;
+using MySql.Data.MySqlClient;
+
+using System.Text.RegularExpressions;
 
 namespace proGEDIA.utilities {
     public static class Convert {
@@ -152,6 +155,10 @@ namespace proGEDIA.utilities {
             }
 
             return hex.ToString().ToUpper();
+        }
+
+        public static string cleanSQL( string SQL ) {
+            return Regex.Replace( SQL.Replace( "[", "" ).Replace( "]", "" ).Replace( "\r", " " ).Replace( "\n", " " ), @"([\s]{2,})", " " );
         }
     }
 

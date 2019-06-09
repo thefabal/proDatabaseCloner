@@ -4,9 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+
 using System.Data.SqlClient;
-using MySql.Data.MySqlClient;
 using System.Data.SQLite;
+using MySql.Data.MySqlClient;
+
+using System.Text.RegularExpressions;
 
 namespace DatabaseCloner {
     public class database_backup {
@@ -21,7 +24,6 @@ namespace DatabaseCloner {
         private readonly Dictionary<string, database_function> function = new Dictionary<string, database_function>();
         private readonly Dictionary<string, database_trigger> trigger = new Dictionary<string, database_trigger>();
 
-        private string message = string.Empty;
         private StreamWriter sw;
         private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
         private readonly proGEDIA.utilities.database db;
@@ -33,16 +35,14 @@ namespace DatabaseCloner {
             this.row_per_insert = row_per_insert;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     db.mssqlCon.ChangeDatabase( database_name );
+                }                    
                 break;
 
-                case "mysql":
+                case "mysql": {
                     db.mysqlCon.ChangeDatabase( database_name );
-                break;
-
-                case "sqlite":
-
+                }                    
                 break;
             }
         }
@@ -93,73 +93,8 @@ namespace DatabaseCloner {
             }
 
             this.updateStatus( this, "enableForm" );
+
             return true;
-        }
-
-        private string getUniqueKey( List<database_uniquekey> uniquekey ) {
-            string schema = string.Empty;
-            if( db.server_type.ToLower() != "mssql" ) {
-                return "";
-            }
-
-            if( uniquekey.Count > 0 ) {
-                foreach( database_uniquekey entry_uniquekey in uniquekey ) {
-                    schema += "\r\nCREATE ";
-                    if( entry_uniquekey.is_unique ) {
-                        schema += "UNIQUE ";
-                    }
-                    if( entry_uniquekey.clustered ) {
-                        schema += "CLUSTERED ";
-                    } else {
-                        schema += "NONCLUSTERED ";
-                    }
-                    schema += "INDEX [" + entry_uniquekey.name + "] ON [" + entry_uniquekey.schema + "].[" + entry_uniquekey.table + "](";
-                    foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.column ) {
-                        schema += "[" + entry_column.Key + "] ";
-                        schema += ( entry_column.Value ) ? ( "DESC" ) : ( "ASC" );
-                        schema += ", ";
-                    }
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
-                    schema += ")\r\n\tWITH (";
-                    schema += ( entry_uniquekey.is_padded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
-                    schema += ( entry_uniquekey.statictics_norecompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
-                    schema += ( entry_uniquekey.sort_in_tempdb ) ? ( "SORT_IN_TEMPDB = ON, " ) : ( "SORT_IN_TEMPDB = OFF, " );
-                    schema += ( entry_uniquekey.ignore_dup_key ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
-                    schema += ( entry_uniquekey.drop_existing ) ? ( "DROP_EXISTING = ON, " ) : ( "DROP_EXISTING = OFF, " );
-                    schema += ( entry_uniquekey.allow_row_locks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
-                    schema += ( entry_uniquekey.allow_page_locks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
-                    schema += ") ON[PRIMARY];\r\n\r\n";
-                }
-            }
-
-            return schema;
-        }
-
-        private string getForeignKey( List<database_foreignkey> foreignkey ) {
-            string schema = string.Empty;
-            if( db.server_type.ToLower() != "mssql" ) {
-                return "";
-            }
-
-            if( foreignkey.Count > 0 ) {
-                schema += "\r\nALTER TABLE [" + foreignkey[ 0 ].pschema + "].[" + foreignkey[ 0 ].ptable + "] ADD ";
-                foreach( database_foreignkey entry_foreignkey in foreignkey ) {
-                    schema += "\r\n\tCONSTRAINT [" + entry_foreignkey.name + "] FOREIGN KEY (";
-                    foreach( string column in entry_foreignkey.column ) {
-                        schema += "[" + column + "], ";
-                    }
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
-                    schema += ") REFERENCES [" + entry_foreignkey.rschema + "].[" + entry_foreignkey.rtable + "] (";
-                    foreach( string column in entry_foreignkey.rcolumn ) {
-                        schema += "[" + column + "], ";
-                    }
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
-                    schema += ")";
-                }
-                schema += ";\r\n\r\n";
-            }
-
-            return schema;
         }
 
         private bool getTable( ) {
@@ -177,7 +112,7 @@ namespace DatabaseCloner {
             }
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, t.name, t.lob_data_space_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.name IN(" + tables + ") ORDER BY t.name";
 
@@ -193,17 +128,18 @@ namespace DatabaseCloner {
                         mssqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getTable" );
+                        log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        this.message = ex.Message;
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' AND table_name IN(" + tables + ") ORDER BY table_schema";
 
@@ -221,38 +157,40 @@ namespace DatabaseCloner {
                         mysqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getTable" );
+                        log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        this.message = ex.Message;
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
+                }
                 break;
 
-                case "sqlite":
+                case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     sqliteCom.CommandText = "SELECT name FROM sqlite_master";
 
                     try {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         if( sqliteReader.HasRows ) {
-                            while( sqliteReader.Read()) {
+                            while( sqliteReader.Read() ) {
                                 table.Add( sqliteReader.GetString( 0 ), new database_table( "", sqliteReader.GetString( 0 ) ) );
                             }
                         }
                         sqliteReader.Close();
-                    } catch(Exception ex) {
+                    } catch( Exception ex ) {
                         log.LogWrite( "getTable" );
+                        log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        this.message = ex.Message;
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
+                }
                 break;
             }
 
@@ -263,221 +201,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getView( ) {
-            string views = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
-                if( entry.type == "view" && entry.schema ) {
-                    views += "'" + entry.name + "', ";
-                }
-            }
-
-            if( views.Length == 0 ) {
-                return true;
-            } else {
-                views = proGEDIA.utilities.StringExtensions.Cut( views, 2 );
-            }
-
-            switch( db.server_type.ToLower() ) {
-                case "mssql":
-                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT v.name, s.definition FROM sys.views AS v INNER JOIN sys.sql_modules AS s ON v.object_id = s.object_id WHERE v.name IN(" + views + ")";
-
-                    try {
-                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
-                        if( mssqlReader.HasRows ) {
-                            while( mssqlReader.Read() ) {
-                                view.Add( mssqlReader.GetString( 0 ), new database_view() {
-                                    name = mssqlReader.GetString( 0 ),
-                                    schema = mssqlReader.GetString( 1 )
-                                } );
-                            }
-                        }
-                        mssqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getView" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-                        
-                        return false;
-                    }
-                break;
-
-                case "mysql":
-                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + database_name + "' AND table_name IN(" + views + ")";
-
-                    try {
-                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
-                        if( mysqlReader.HasRows ) {
-                            while( mysqlReader.Read() ) {
-                                view.Add( mysqlReader.GetString( 0 ), new database_view() {
-                                    name = mysqlReader.GetString( 0 ),
-                                    schema = mysqlReader.GetString( 1 ),
-                                    definer = mysqlReader.GetString( 2 ),
-                                    security_type = mysqlReader.GetString( 3 )
-                                } );
-                            }
-                        }
-                        mysqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getView" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-
-                        return false;
-                    }
-                break;
-            }
-
-            return true;
-        }
-
-        private bool getFunction( ) {
-            string functions = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
-                if( entry.type == "function" && entry.schema ) {
-                    functions += "'" + entry.name + "', ";
-                }
-            }
-
-            if( functions.Length == 0 ) {
-                return true;
-            } else {
-                functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
-            }
-
-            switch( db.server_type.ToLower() ) {
-                case "mssql":
-                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT o.name, m.definition FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id INNER JOIN sys.sql_modules AS m ON o.object_id = m.object_id WHERE type = 'FN' AND is_ms_shipped = 0 AND o.name IN(" + functions + ")";
-
-                    try {
-                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
-                        if( mssqlReader.HasRows ) {
-                            while( mssqlReader.Read() ) {
-                                function.Add( mssqlReader.GetString( 0 ), new database_function() {
-                                    name = mssqlReader.GetString( 0 ),
-                                    schema = mssqlReader.GetString( 1 )
-                                } );
-                            }
-                        }
-                        mssqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getFunction" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-
-                        return false;
-                    }
-                break;
-
-                case "mysql":
-                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name, param_list, returns, body, definer FROM mysql.proc WHERE db = '" + database_name + "' AND name IN(" + functions + ")";
-
-                    try {
-                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
-                        if( mysqlReader.HasRows ) {
-                            while( mysqlReader.Read() ) {
-                                function.Add( mysqlReader.GetString( 0 ), new database_function() {
-                                    name = mysqlReader.GetString( 0 ),
-                                    param_list = mysqlReader.GetString( 1 ),
-                                    returns = mysqlReader.GetString( 2 ),
-                                    schema = mysqlReader.GetString( 3 ),
-                                    definer = mysqlReader.GetString( 4 )
-                                } );
-                            }
-                        }
-                        mysqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getFunction" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-
-                        return false;
-                    }
-                break;
-            }
-
-            return true;
-        }
-
-        private bool getTrigger( ) {
-            string triggers = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
-                if( entry.type == "trigger" && entry.schema ) {
-                    triggers += "'" + entry.name + "', ";
-                }
-            }
-
-            if( triggers.Length == 0 ) {
-                return true;
-            } else {
-                triggers = proGEDIA.utilities.StringExtensions.Cut( triggers, 2 );
-            }
-
-            switch( db.server_type.ToLower() ) {
-                case "mssql":
-                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT t.name, s.definition FROM sys.triggers AS t INNER JOIN sys.sql_modules AS s ON t.object_id = s.object_id WHERE t.type = 'TR' AND t.name IN(" + triggers + ")";
-                    try {
-                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
-                        if( mssqlReader.HasRows ) {
-                            while( mssqlReader.Read() ) {
-                                trigger.Add( mssqlReader.GetString( 0 ), new database_trigger() {
-                                    name = mssqlReader.GetString( 0 ),
-                                    schema = mssqlReader.GetString( 1 )
-                                } );
-                            }
-                        }
-                        mssqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getTrigger" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-
-                        return false;
-                    }
-                break;
-
-                case "mysql":
-                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + database_name + "' AND trigger_name IN(" + triggers + ")";
-                    try {
-                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
-                        if( mysqlReader.HasRows ) {
-                            while( mysqlReader.Read() ) {
-                                trigger.Add( mysqlReader.GetString( 0 ), new database_trigger() {
-                                    name = mysqlReader.GetString( 0 ),
-                                    table = mysqlReader.GetString( 1 ),
-                                    action_timing = mysqlReader.GetString( 2 ),
-                                    event_manupilation = mysqlReader.GetString( 3 ),
-                                    schema = mysqlReader.GetString( 4 ),
-                                    action_orientation = mysqlReader.GetString( 5 )
-                                } );
-                            }
-                        }
-                    mysqlReader.Close();
-                    } catch( Exception ex ) {
-                        log.LogWrite( "getTrigger" );
-                        log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
-
-                        return false;
-                    }
-                break;
-            }
-
-            return true;
-        }
-
-        private bool getColumn( ) {
+        private bool getColumn() {
             this.updateStatus( this, "Generating Table's Column Info" );
 
             if( table.Count == 0 ) {
@@ -506,16 +230,15 @@ namespace DatabaseCloner {
                         mssqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getColumn" );
+                        log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
-                }           
+                }
                 break;
 
                 case "mysql": {
@@ -540,9 +263,8 @@ namespace DatabaseCloner {
                         mysqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getColumn" );
+                        log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
@@ -559,20 +281,24 @@ namespace DatabaseCloner {
                         try {
                             SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                             while( sqliteReader.Read() ) {
-                                table[ key ].columns.Add( new database_column() {
-                                    name = sqliteReader.GetString( 1 ),
-                                    column_default = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
-                                    type = sqliteReader.GetString( 2 ),
-                                    is_nullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
-                                    is_identity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
-                                } );
+                                Match match = ( new Regex(@"([a-zA-Z]{1,})(\(([0-9]{1,})\))?") ).Match( sqliteReader.GetString( 2 ) );
+
+                                if( match.Success ) {
+                                    table[ key ].columns.Add( new database_column() {
+                                        name = sqliteReader.GetString( 1 ),
+                                        column_default = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
+                                        type = match.Groups[ 1 ].Value,
+                                        maxlen = ( match.Groups[ 3 ].Value.Length != 0 ) ? ( Convert.ToInt32( match.Groups[ 3 ].Value ) ) : ( 0 ),
+                                        is_nullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
+                                        is_identity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
+                                    } );
+                                }
                             }
                             sqliteReader.Close();
                         } catch( Exception ex ) {
                             log.LogWrite( "getColumn" );
+                            log.LogWrite( sqliteCom.CommandText );
                             log.LogWrite( ex.Message );
-
-                            this.message = ex.Message;
 
                             this.updateStatus( this, "Error : " + ex.Message );
                             this.updateStatus( this, "enableForm" );
@@ -587,7 +313,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getConstraint( ) {
+        private bool getConstraint() {
             this.updateStatus( this, "Generating Table's Constraint Info" );
 
             if( table.Count == 0 ) {
@@ -595,9 +321,9 @@ namespace DatabaseCloner {
             }
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT t.name, k.name AS key_name, k.type AS key_type, c.name AS column_name, i.type, ic.is_descending_key, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.key_constraints AS k INNER JOIN sys.tables AS t ON k.parent_object_id = t.object_id INNER JOIN sys.indexes AS i ON i.object_id = t.object_id AND i.name = k.name INNER JOIN sys.schemas AS s ON k.schema_id = s.schema_id INNER JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE k.is_ms_shipped = 0 AND t.name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY t.name, k.type, k.name";
+                    mssqlCom.CommandText = "SELECT t.name, k.name AS key_name, k.type AS key_type, c.name AS column_name, i.type, ic.is_descending_key, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.key_constraints AS k INNER JOIN sys.tables AS t ON k.parent_object_id = t.object_id INNER JOIN sys.indexes AS i ON i.object_id = t.object_id AND i.name = k.name INNER JOIN sys.schemas AS s ON k.schema_id = s.schema_id INNER JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE k.is_ms_shipped = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, k.type, k.name";
                     try {
                         string pre = string.Empty;
 
@@ -625,20 +351,20 @@ namespace DatabaseCloner {
                         mssqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getConstraint" );
+                        log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + database_name + "' ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + database_name + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name";
                     try {
                         string pre = string.Empty;
 
@@ -650,7 +376,7 @@ namespace DatabaseCloner {
                                 table[ mysqlReader.GetString( 0 ) ].constraint.Add( new database_constraint() {
                                     name = mysqlReader.GetString( 2 ),
                                     column = new Dictionary<string, bool>() { { mysqlReader.GetString( 3 ), true } },
-                                    is_unique = ( mysqlReader.GetInt32( 1 ) == 1) ? (false) : (true)
+                                    is_unique = ( mysqlReader.GetInt32( 1 ) == 1 ) ? ( false ) : ( true )
                                 } );
 
                                 pre = mysqlReader.GetString( 0 ) + "|" + mysqlReader.GetString( 2 );
@@ -659,26 +385,56 @@ namespace DatabaseCloner {
                         mysqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getConstraint" );
+                        log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
 
                         return false;
                     }
+                }
+                break;
+
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    try {
+                        sqliteCom.CommandText = "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "')";
+
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            Match match = ( new Regex( @"CONSTRAINT ([^\s]{1,}) PRIMARY KEY([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 1 ) ) );
+
+                            if( match.Success ) {
+                                table[ sqliteReader.GetString( 0 ) ].constraint.Add( new database_constraint() {
+                                    name = match.Groups[ 1 ].Value,                                    
+                                    column = new Dictionary<string, bool>() {
+                                            { match.Groups[3].Value, true }
+                                        }
+                                } );
+                            }
+                        }
+
+                        sqliteReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getConstraint" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                }
                 break;
             }
 
             return true;
         }
 
-        private bool getUniqueKey( ) {
+        private bool getUniqueKey() {
             this.updateStatus( this, "Generating Table's Unique Keys" );
-            if( db.server_type.ToLower() != "mssql" ) {
-                return true;
-            }
 
             string tables = string.Empty;
             foreach( KeyValuePair<string, database_table> entry in table ) {
@@ -691,50 +447,95 @@ namespace DatabaseCloner {
                 tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
             }
 
-            SqlCommand sqlCom = db.mssqlCon.CreateCommand();
-            sqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN(" + tables + ") ORDER BY t.name, i.name";
-            try {
-                string pre = string.Empty;
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN(" + tables + ") ORDER BY t.name, i.name";
+                    try {
+                        string pre = string.Empty;
 
-                SqlDataReader sqlReader = sqlCom.ExecuteReader();
-                while( sqlReader.Read() ) {
-                    if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
-                        table[ sqlReader.GetString( 0 ) ].uniquekey[ table[ sqlReader.GetString( 0 ) ].uniquekey.Count - 1 ].column[ sqlReader.GetString( 1 ) ] = sqlReader.GetBoolean( 4 );
-                    } else {
-                        table[ sqlReader.GetString( 0 ) ].uniquekey.Add( new database_uniquekey() {
-                            name = sqlReader.GetString( 2 ),
-                            schema = sqlReader.GetString( 3 ),
-                            table = sqlReader.GetString( 0 ),
-                            column = new Dictionary<string, bool>() { { sqlReader.GetString( 1 ), sqlReader.GetBoolean( 4 ) } },
-                            clustered = ( sqlReader.GetByte( 5 ) == 1 ) ? ( true ) : ( false ),
-                            is_unique = sqlReader.GetBoolean( 6 ),
-                            is_padded = sqlReader.GetBoolean( 7 ),
-                            statictics_norecompute = sqlReader.GetBoolean( 8 ),
-                            ignore_dup_key = sqlReader.GetBoolean( 9 ),
-                            allow_row_locks = sqlReader.GetBoolean( 10 ),
-                            allow_page_locks = sqlReader.GetBoolean( 11 )
-                        } );
+                        SqlDataReader sqlReader = mssqlCom.ExecuteReader();
+                        while( sqlReader.Read() ) {
+                            if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
+                                table[ sqlReader.GetString( 0 ) ].uniquekey[ table[ sqlReader.GetString( 0 ) ].uniquekey.Count - 1 ].column[ sqlReader.GetString( 1 ) ] = sqlReader.GetBoolean( 4 );
+                            } else {
+                                table[ sqlReader.GetString( 0 ) ].uniquekey.Add( new database_uniquekey() {
+                                    name = sqlReader.GetString( 2 ),
+                                    schema = sqlReader.GetString( 3 ),
+                                    table = sqlReader.GetString( 0 ),
+                                    column = new Dictionary<string, bool>() { { sqlReader.GetString( 1 ), sqlReader.GetBoolean( 4 ) } },
+                                    clustered = ( sqlReader.GetByte( 5 ) == 1 ) ? ( true ) : ( false ),
+                                    is_unique = sqlReader.GetBoolean( 6 ),
+                                    is_padded = sqlReader.GetBoolean( 7 ),
+                                    statictics_norecompute = sqlReader.GetBoolean( 8 ),
+                                    ignore_dup_key = sqlReader.GetBoolean( 9 ),
+                                    allow_row_locks = sqlReader.GetBoolean( 10 ),
+                                    allow_page_locks = sqlReader.GetBoolean( 11 )
+                                } );
 
-                        pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
+                                pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
+                            }
+                        }
+                        sqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getUniqueKey" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
                     }
                 }
-                sqlReader.Close();
-            } catch( Exception ex ) {
-                log.LogWrite( "getUniqueKey" );
-                log.LogWrite( ex.Message );
+                break;
 
-                this.message = ex.Message;
+                case "mysql": {
 
-                this.updateStatus( this, "Error : " + ex.Message );
-                this.updateStatus( this, "enableForm" );
+                }
+                break;
 
-                return false;
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    try {
+                        sqliteCom.CommandText = "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND name IN(" + tables + ")";
+
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            if( sqliteReader.IsDBNull( 2 ) == false ) {
+                                Match match = ( new Regex( @"CREATE INDEX([\s]{1,})([^\s]{1,})([\s]{1,})ON([\s]{1,})([^\s]{1,})([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 2 ) ) );
+
+                                if( match.Success ) {
+                                    table[ sqliteReader.GetString( 1 ) ].uniquekey.Add( new database_uniquekey() {
+                                        name = match.Groups[ 2 ].Value,
+                                        table = match.Groups[ 5 ].Value,
+                                        column = new Dictionary<string, bool>() {
+                                            { match.Groups[ 7 ].Value, true }
+                                        }
+                                    } );
+                                }
+                            }
+                        }
+
+                        sqliteReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getUniqueKey" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                }
+                break;
             }
 
             return true;
         }
 
-        private bool getForeignKey( ) {
+        private bool getForeignKey() {
             this.updateStatus( this, "Generating Table's Unique Keys" );
 
             if( table.Count == 0 ) {
@@ -743,13 +544,13 @@ namespace DatabaseCloner {
 
             switch( db.server_type.ToLower() ) {
                 case "mssql": {
-                    SqlCommand sqlCom = db.mssqlCon.CreateCommand();
-                    sqlCom.CommandText = "SELECT pc.name AS parent_tname, sf.name AS key_schema, f.name AS key_name, spc.name AS parent_tschema, sc.name AS parent_cname, spr.name AS reference_tschema, pr.name AS reference_tname, sr.name AS reference_cname FROM sys.foreign_keys f INNER JOIN sys.schemas AS sf ON f.schema_id = sf.schema_id INNER JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id INNER JOIN sys.columns AS sc ON k.parent_object_id = sc.object_id AND k.parent_column_id = sc.column_id INNER JOIN sys.columns AS sr ON k.referenced_object_id = sr.object_id AND k.referenced_column_id = sr.column_id INNER JOIN sys.tables pc ON pc.object_id = f.parent_object_id INNER JOIN sys.tables pr ON pr.object_id = f.referenced_object_id INNER JOIN sys.schemas AS spc ON pc.schema_id = spc.schema_id INNER JOIN sys.schemas AS spr ON pr.schema_id = spr.schema_id WHERE pc.name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY pc.name, f.name, k.constraint_column_id";
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT pc.name AS parent_tname, sf.name AS key_schema, f.name AS key_name, spc.name AS parent_tschema, sc.name AS parent_cname, spr.name AS reference_tschema, pr.name AS reference_tname, sr.name AS reference_cname FROM sys.foreign_keys f INNER JOIN sys.schemas AS sf ON f.schema_id = sf.schema_id INNER JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id INNER JOIN sys.columns AS sc ON k.parent_object_id = sc.object_id AND k.parent_column_id = sc.column_id INNER JOIN sys.columns AS sr ON k.referenced_object_id = sr.object_id AND k.referenced_column_id = sr.column_id INNER JOIN sys.tables pc ON pc.object_id = f.parent_object_id INNER JOIN sys.tables pr ON pr.object_id = f.referenced_object_id INNER JOIN sys.schemas AS spc ON pc.schema_id = spc.schema_id INNER JOIN sys.schemas AS spr ON pr.schema_id = spr.schema_id WHERE pc.name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY pc.name, f.name, k.constraint_column_id";
 
                     try {
                         string pre = string.Empty;
 
-                        SqlDataReader sqlReader = sqlCom.ExecuteReader();
+                        SqlDataReader sqlReader = mssqlCom.ExecuteReader();
                         while( sqlReader.Read() ) {
                             if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
                                 if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Contains( sqlReader.GetString( 4 ) ) == false ) {
@@ -777,9 +578,8 @@ namespace DatabaseCloner {
                         sqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getForeignKey" );
+                        log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
@@ -789,35 +589,35 @@ namespace DatabaseCloner {
                 }
                 break;
 
-                case "mysql":
+                case "mysql": {
 
+                }
                 break;
 
                 case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     foreach( string key in table.Keys.ToArray() ) {
-                        sqliteCom.CommandText = "PRAGMA foreign_key_list('" + key + "')";
                         try {
+                            sqliteCom.CommandText = "PRAGMA foreign_key_list('" + key + "')";
+
                             SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                             while( sqliteReader.Read() ) {
                                 table[ key ].foreignkey.Add( new database_foreignkey() {
-                                    column = new List<string>() { sqliteReader.GetString( 3 ) }
-                                } );
-
-                                table[ key ].references.Add( new database_references() {
+                                    column = new List<string>() { sqliteReader.GetString( 3 ) },
+                                    references = new database_references() {
                                     table = sqliteReader.GetString( 2 ),
                                     column = sqliteReader.GetString( 4 ),
                                     on_update = sqliteReader.GetString( 5 ),
                                     on_delete = sqliteReader.GetString( 6 )
+                                }
                                 } );
                             }
 
                             sqliteReader.Close();
                         } catch( Exception ex ) {
                             log.LogWrite( "getForeignKey" );
+                            log.LogWrite( sqliteCom.CommandText );
                             log.LogWrite( ex.Message );
-
-                            this.message = ex.Message;
 
                             this.updateStatus( this, "Error : " + ex.Message );
                             this.updateStatus( this, "enableForm" );
@@ -832,11 +632,286 @@ namespace DatabaseCloner {
             return true;
         }
 
+        private bool getView( ) {
+            string views = string.Empty;
+            foreach( backup_settings entry in backup_settings ) {
+                if( entry.type == "view" && entry.schema ) {
+                    views += "'" + entry.name + "', ";
+                }
+            }
+
+            if( views.Length == 0 ) {
+                return true;
+            } else {
+                views = proGEDIA.utilities.StringExtensions.Cut( views, 2 );
+            }
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT v.name, s.definition FROM sys.views AS v INNER JOIN sys.sql_modules AS s ON v.object_id = s.object_id WHERE v.name IN(" + views + ")";
+
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        if( mssqlReader.HasRows ) {
+                            while( mssqlReader.Read() ) {
+                                view.Add( mssqlReader.GetString( 0 ), new database_view() {
+                                    name = mssqlReader.GetString( 0 ),
+                                    schema = mssqlReader.GetString( 1 )
+                                } );
+                            }
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getView" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + database_name + "' AND table_name IN(" + views + ")";
+
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        if( mysqlReader.HasRows ) {
+                            while( mysqlReader.Read() ) {
+                                view.Add( mysqlReader.GetString( 0 ), new database_view() {
+                                    name = mysqlReader.GetString( 0 ),
+                                    schema = mysqlReader.GetString( 1 ),
+                                    definer = mysqlReader.GetString( 2 ),
+                                    security_type = mysqlReader.GetString( 3 )
+                                } );
+                            }
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getView" );
+                        log.LogWrite( mysqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+
+                }
+                break;
+
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    try {
+                        sqliteCom.CommandText = "SELECT name, sql FROM sqlite_master WHERE type = 'view' and name IN(" + views + ")";
+
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            view.Add( sqliteReader.GetString( 0 ), new database_view() {
+                                name = sqliteReader.GetString( 0 ),
+                                schema = sqliteReader.GetString( 1 )
+                            });
+                        }
+
+                        sqliteReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getView" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                }
+                break;
+            }
+
+            return true;
+        }
+
+        private bool getFunction( ) {
+            string functions = string.Empty;
+            foreach( backup_settings entry in backup_settings ) {
+                if( entry.type == "function" && entry.schema ) {
+                    functions += "'" + entry.name + "', ";
+                }
+            }
+
+            if( functions.Length == 0 ) {
+                return true;
+            } else {
+                functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
+            }
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT o.name, m.definition FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id INNER JOIN sys.sql_modules AS m ON o.object_id = m.object_id WHERE type = 'FN' AND is_ms_shipped = 0 AND o.name IN(" + functions + ")";
+
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        if( mssqlReader.HasRows ) {
+                            while( mssqlReader.Read() ) {
+                                function.Add( mssqlReader.GetString( 0 ), new database_function() {
+                                    name = mssqlReader.GetString( 0 ),
+                                    schema = mssqlReader.GetString( 1 )
+                                } );
+                            }
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getFunction" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT name, param_list, returns, body, definer FROM mysql.proc WHERE db = '" + database_name + "' AND name IN(" + functions + ")";
+
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        if( mysqlReader.HasRows ) {
+                            while( mysqlReader.Read() ) {
+                                function.Add( mysqlReader.GetString( 0 ), new database_function() {
+                                    name = mysqlReader.GetString( 0 ),
+                                    param_list = mysqlReader.GetString( 1 ),
+                                    returns = mysqlReader.GetString( 2 ),
+                                    schema = mysqlReader.GetString( 3 ),
+                                    definer = mysqlReader.GetString( 4 )
+                                } );
+                            }
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getFunction" );
+                        log.LogWrite( mysqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "sqlite": {
+
+                }
+                break;
+            }
+
+            return true;
+        }
+
+        private bool getTrigger( ) {
+            string triggers = string.Empty;
+            foreach( backup_settings entry in backup_settings ) {
+                if( entry.type == "trigger" && entry.schema ) {
+                    triggers += "'" + entry.name + "', ";
+                }
+            }
+
+            if( triggers.Length == 0 ) {
+                return true;
+            } else {
+                triggers = proGEDIA.utilities.StringExtensions.Cut( triggers, 2 );
+            }
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT t.name, s.definition FROM sys.triggers AS t INNER JOIN sys.sql_modules AS s ON t.object_id = s.object_id WHERE t.type = 'TR' AND t.name IN(" + triggers + ")";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        if( mssqlReader.HasRows ) {
+                            while( mssqlReader.Read() ) {
+                                trigger.Add( mssqlReader.GetString( 0 ), new database_trigger() {
+                                    name = mssqlReader.GetString( 0 ),
+                                    schema = mssqlReader.GetString( 1 )
+                                } );
+                            }
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getTrigger" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + database_name + "' AND trigger_name IN(" + triggers + ")";
+                    try {
+                        MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                        if( mysqlReader.HasRows ) {
+                            while( mysqlReader.Read() ) {
+                                trigger.Add( mysqlReader.GetString( 0 ), new database_trigger() {
+                                    name = mysqlReader.GetString( 0 ),
+                                    table = mysqlReader.GetString( 1 ),
+                                    action_timing = mysqlReader.GetString( 2 ),
+                                    event_manupilation = mysqlReader.GetString( 3 ),
+                                    schema = mysqlReader.GetString( 4 ),
+                                    action_orientation = mysqlReader.GetString( 5 )
+                                } );
+                            }
+                        }
+                        mysqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getTrigger" );
+                        log.LogWrite( mysqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    try {
+                        sqliteCom.CommandText = "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'trigger' and name IN(" + triggers + ")";
+
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+                        while( sqliteReader.Read() ) {
+                            trigger.Add( sqliteReader.GetString( 0 ), new database_trigger() {
+                                name = sqliteReader.GetString( 0 ),
+                                table = sqliteReader.GetString( 1 ),
+                                schema = sqliteReader.GetString( 2 )
+                            } );
+                        }
+
+                        sqliteReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getTrigger" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                }
+                break;
+            }
+
+            return true;
+        }
+
         private bool getTableSchema( database_table entry_table ) {
             string schema = string.Empty;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     this.updateStatus( this, "Generating Table's Schema ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
                     schema = "CREATE TABLE [" + entry_table.schema + "].[" + entry_table.name + "] (";
@@ -879,13 +954,14 @@ namespace DatabaseCloner {
                     **/
                     schema += getUniqueKey( entry_table.uniquekey );
                     schema += getForeignKey( entry_table.foreignkey );
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     this.updateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
 
                     schema = "CREATE TABLE " + entry_table.name + " (";
-                
+
                     /**
                      * Columns
                     */
@@ -919,6 +995,52 @@ namespace DatabaseCloner {
                     schema += getConstraintSchema( entry_table.constraint );
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n) ENGINE=" + entry_table.db_engine + " DEFAULT CHARSET=" + entry_table.db_character_set + " COLLATE=" + entry_table.db_collation + ";\r\n\r\n";
+                }
+                break;
+
+                case "sqlite": {
+                    this.updateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
+
+                    schema = "CREATE TABLE " + entry_table.name + " (";
+
+                    /**
+                     * Columns
+                    */
+                    foreach( database_column entry_column in entry_table.columns ) {
+                        schema += "\r\n\t" + entry_column.name + " " + entry_column.type + "";
+
+                        if( entry_column.maxlen != 0 ) {
+                            schema += "(" + entry_column.maxlen + ")";
+                        }
+
+                        if( entry_column.is_nullable == false ) {
+                            schema += " NOT NULL";
+                        }
+
+                        schema += ",";
+                    }
+
+                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+
+                    /**
+                     * Primary Constraints
+                    **/
+                    schema += getConstraintSchema( entry_table.constraint );
+
+                    /**
+                     * Foreign Keys
+                    **/
+                    schema += getForeignKey( entry_table.foreignkey );
+
+                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+                    schema += "\r\n);\r\n";
+
+                    /**
+                     * Unique Constraints
+                    **/
+                    schema += getUniqueKey( entry_table.uniquekey );
+                    schema += "\r\n";
+                }
                 break;
             }
 
@@ -933,7 +1055,7 @@ namespace DatabaseCloner {
 
             if( constraint.Count > 0 ) {
                 switch( db.server_type.ToLower() ) {
-                    case "mssql":
+                    case "mssql": {
                         foreach( database_constraint entry_constraint in constraint ) {
                             schema += "\r\n\tCONSTRAINT [" + entry_constraint.name + "] ";
                             schema += ( entry_constraint.type == "PK" ) ? ( "PRIMARY KEY " ) : ( "UNIQUE " );
@@ -959,9 +1081,10 @@ namespace DatabaseCloner {
                             schema += ( entry_constraint.allow_page_locks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
                             schema += ") ON[PRIMARY],";
                         }
+                    }
                     break;
 
-                    case "mysql":
+                    case "mysql": {
                         foreach( database_constraint entry_constraint in constraint ) {
                             if( entry_constraint.name == "PRIMARY" ) {
                                 schema += "\r\n\tPRIMARY KEY (";
@@ -992,6 +1115,125 @@ namespace DatabaseCloner {
                                 schema += "),";
                             }
                         }
+                    }
+                    break;
+
+                    case "sqlite": {
+                        foreach( database_constraint entry_constraint in constraint ) {
+                            schema += "\r\n\tCONSTRAINT " + entry_constraint.name + " PRIMARY KEY (";
+
+                            foreach( KeyValuePair<string, bool> entry_column in entry_constraint.column ) {
+                                schema += entry_column.Key + ", ";
+                            }
+
+                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema += "),";
+                        }
+                    }
+                    break;
+                }
+            }
+
+            return schema;
+        }
+
+        private string getUniqueKey( List<database_uniquekey> uniquekey ) {
+            string schema = string.Empty;
+
+            if( uniquekey.Count > 0 ) {
+                switch( db.server_type.ToLower() ) {
+                    case "mssql": {
+                        foreach( database_uniquekey entry_uniquekey in uniquekey ) {
+                            schema += "\r\nCREATE ";
+                            if( entry_uniquekey.is_unique ) {
+                                schema += "UNIQUE ";
+                            }
+                            if( entry_uniquekey.clustered ) {
+                                schema += "CLUSTERED ";
+                            } else {
+                                schema += "NONCLUSTERED ";
+                            }
+                            schema += "INDEX [" + entry_uniquekey.name + "] ON [" + entry_uniquekey.schema + "].[" + entry_uniquekey.table + "](";
+                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.column ) {
+                                schema += "[" + entry_column.Key + "] ";
+                                schema += ( entry_column.Value ) ? ( "DESC" ) : ( "ASC" );
+                                schema += ", ";
+                            }
+                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema += ")\r\n\tWITH (";
+                            schema += ( entry_uniquekey.is_padded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
+                            schema += ( entry_uniquekey.statictics_norecompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
+                            schema += ( entry_uniquekey.sort_in_tempdb ) ? ( "SORT_IN_TEMPDB = ON, " ) : ( "SORT_IN_TEMPDB = OFF, " );
+                            schema += ( entry_uniquekey.ignore_dup_key ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
+                            schema += ( entry_uniquekey.drop_existing ) ? ( "DROP_EXISTING = ON, " ) : ( "DROP_EXISTING = OFF, " );
+                            schema += ( entry_uniquekey.allow_row_locks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
+                            schema += ( entry_uniquekey.allow_page_locks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
+                            schema += ") ON[PRIMARY];\r\n\r\n";
+                        }
+                    }
+                    break;
+
+                    case "mysql": {
+
+                    }
+                    break;
+
+                    case "sqlite": {
+                        foreach( database_uniquekey entry_uniquekey in uniquekey ) {
+                            schema += "\r\nCREATE INDEX " + entry_uniquekey.name + " ON " + entry_uniquekey.table + " (";
+                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.column ) {
+                                schema += entry_column.Key + ", ";
+                            }
+                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema += ");";
+                        }
+
+                        if( schema.Length > 0 ) {
+                            schema += "\r\n\r\n";
+                        }
+                    }
+                    break;
+                }
+            }
+
+            return schema;
+        }
+
+        private string getForeignKey( List<database_foreignkey> foreignkey ) {
+            string schema = string.Empty;
+
+            if( foreignkey.Count > 0 ) {
+                switch( db.server_type.ToLower() ) {
+                    case "mssql": {
+                        schema += "\r\nALTER TABLE [" + foreignkey[ 0 ].pschema + "].[" + foreignkey[ 0 ].ptable + "] ADD ";
+                        foreach( database_foreignkey entry_foreignkey in foreignkey ) {
+                            schema += "\r\n\tCONSTRAINT [" + entry_foreignkey.name + "] FOREIGN KEY (";
+                            foreach( string column in entry_foreignkey.column ) {
+                                schema += "[" + column + "], ";
+                            }
+                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema += ") REFERENCES [" + entry_foreignkey.rschema + "].[" + entry_foreignkey.rtable + "] (";
+                            foreach( string column in entry_foreignkey.rcolumn ) {
+                                schema += "[" + column + "], ";
+                            }
+                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema += ")";
+                        }
+                        schema += ";\r\n\r\n";
+                    }
+                    break;
+
+                    case "mysql": {
+
+                    }
+                    break;
+
+                    case "sqlite": {                       
+                        foreach( database_foreignkey entry_foreignkey in foreignkey ) {
+                            schema += "\r\n\tFOREIGN KEY (" + entry_foreignkey.column[0] + ") REFERENCES " + entry_foreignkey.references.table +  " (" + entry_foreignkey.references.column + ")";
+                            schema += "\r\n\t\tON DELETE " + entry_foreignkey.references.on_delete + " ON UPDATE " + entry_foreignkey.references.on_update + ",";
+                        }
+                    }
                     break;
                 }
             }
@@ -1155,9 +1397,8 @@ namespace DatabaseCloner {
                         mssqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getTableData" );
+                        log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
-
-                        this.message = ex.Message;
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
@@ -1286,9 +1527,144 @@ namespace DatabaseCloner {
                         mysqlReader.Close();
                     } catch( Exception ex ) {
                         log.LogWrite( "getTableData" );
+                        log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        this.message = ex.Message;
+                        this.updateStatus( this, "Error : " + ex.Message );
+                        this.updateStatus( this, "enableForm" );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "sqlite": {
+                    this.updateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
+
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT * FROM " + entry_table.name + "";
+
+                    try {
+                        SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
+
+                        if( sqliteReader.HasRows ) {
+                            string columns = string.Empty;
+
+                            sqliteReader.Read();
+
+                            tof = new Type[ sqliteReader.FieldCount ];
+                            for( int i = 0; i < sqliteReader.FieldCount; i++ ) {
+                                if( i != 0 ) {
+                                    columns += ", ";
+                                }
+                                columns += sqliteReader.GetName( i );
+
+                                tof[ i ] = sqliteReader.GetFieldType( i );
+                            }
+
+                            int j = 0;
+                            do {
+                                if( j % row_per_insert == 0 ) {
+                                    schema = "INSERT INTO " + entry_table.name + " (" + columns + ") VALUES\r\n";
+                                }
+
+                                schema += "\t(";
+
+                                for( int i = 0; i < sqliteReader.FieldCount; i++ ) {
+                                    if( i != 0 ) {
+                                        schema += ", ";
+                                    }
+
+                                    if( sqliteReader.IsDBNull( i ) ) {
+                                        schema += "NULL";
+                                    } else {
+                                        switch( tof[ i ].Name ) {
+                                            case "String": {
+                                                schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( sqliteReader.GetString( i ) ) + "'";
+                                            }
+                                            break;
+
+                                            case "DateTime": {
+                                                schema += "'" + sqliteReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'";
+                                            }
+                                            break;
+
+                                            case "UInt16":
+                                            case "Int16": {
+                                                schema += "" + sqliteReader.GetInt16( i ) + "";
+                                            }
+                                            break;
+
+                                            case "UInt32":
+                                            case "Int32": {
+                                                schema += "" + sqliteReader.GetInt32( i ) + "";
+                                            }
+                                            break;
+
+                                            case "UInt64":
+                                            case "Int64": {
+                                                schema += "" + sqliteReader.GetInt64( i ) + "";
+                                            }
+                                            break;
+
+                                            case "Double": {
+                                                schema += "" + sqliteReader.GetDouble( i ) + "";
+                                            }
+                                            break;
+
+                                            case "Decimal": {
+                                                schema += "" + sqliteReader.GetDecimal( i ) + "";
+                                            }
+                                            break;
+
+                                            case "Byte": {
+                                                schema += "'" + sqliteReader.GetByte( i ) + "'";
+                                            }
+                                            break;
+
+                                            case "Boolean": {
+                                                schema += ( sqliteReader.GetBoolean( i ) ) ? ( "1" ) : ( "0" );
+                                            }
+                                            break;
+
+                                            default: {
+                                                schema += "'#" + tof[ i ].Name + "#'";
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                schema += ")";
+                                j++;
+                                if( j % row_per_insert == 0 ) {
+                                    schema += ";\r\n";
+
+                                    sw.Write( schema );
+                                    sw.Flush();
+
+                                    schema = string.Empty;
+                                } else {
+                                    schema += ",\r\n";
+                                }
+                            } while( sqliteReader.Read() );
+
+                            if( schema.Length > 0 ) {
+                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
+
+                                sw.Write( schema );
+                                sw.Flush();
+                            }
+
+                            sw.Write( "\r\n\r\n" );
+                            sw.Flush();
+                        }
+
+                        sqliteReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getTableData" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
 
                         this.updateStatus( this, "Error : " + ex.Message );
                         this.updateStatus( this, "enableForm" );
@@ -1306,12 +1682,19 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     schema = entry_view.schema + ";\r\n\r\n";
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     schema = "CREATE ALGORITHM=UNDEFINED DEFINER=" + entry_view.definer + " SQL SECURITY " + entry_view.security_type + " VIEW " + entry_view.name + " AS " + entry_view.schema + ";\r\n\r\n";
+                }
+                break;
+
+                case "sqlite": {
+                    schema = entry_view.schema + ";\r\n\r\n";
+                }
                 break;
             }
 
@@ -1325,16 +1708,22 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     schema = entry_function.schema + ";\r\n\r\n";
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     schema += "DELIMITER $$\r\n";
                     schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(" + entry_function.param_list + ") RETURNS " + entry_function.returns + "\r\n";
                     schema += entry_function.schema;
                     schema += "$$\r\n";
                     schema += "DELIMITER;\r\n\r\n";
+                }
+                break;
+
+                case "sqlite":
+
                 break;
             }
 
@@ -1348,17 +1737,24 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     schema = entry_trigger.schema + ";\r\n\r\n";
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     schema += "DELIMITER $$\r\n";
                     schema += "CREATE TRIGGER " + entry_trigger.name + " " + entry_trigger.action_timing + " " + entry_trigger.event_manupilation + " ON " + entry_trigger.table + "";
                     schema += "\r\n\tFOR EACH " + entry_trigger.action_orientation + "";
                     schema += "\r\n" + entry_trigger.schema;
                     schema += "\r\n$$";
                     schema += "\r\nDELIMITER;\r\n\r\n";
+                }
+                break;
+
+                case "sqlite": {
+                    schema = entry_trigger.schema + ";\r\n\r\n";
+                }
                 break;
             }
 
@@ -1372,21 +1768,22 @@ namespace DatabaseCloner {
             List<table_entry> tableList = new List<table_entry>();
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, t.name, object_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.type = 'U' ORDER BY t.name";
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ));
+                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
                         }
                         mssqlReader.Close();
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' ORDER BY table_name";
                     try {
@@ -1398,19 +1795,21 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "sqlite":
+                case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
-                    sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name";
+                    sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_sequence' ORDER BY name";
                     try {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            tableList.Add( new table_entry( "", sqliteReader.GetString(0) ) );
+                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
                         }
-                    } catch(Exception ex) {
+                    } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
                     }
+                }
                 break;
             }
 
@@ -1421,10 +1820,10 @@ namespace DatabaseCloner {
             List<table_entry> tableList = new List<table_entry>();
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT name FROM sys.views";
-                try {
+                    try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
                             tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
@@ -1433,9 +1832,10 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get view list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT table_name FROM information_schema.views WHERE table_schema = '" + database_name + "' ORDER BY table_name";
                     try {
@@ -1447,9 +1847,10 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get view list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "sqlite":
+                case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'view' ORDER BY name";
                     try {
@@ -1460,6 +1861,7 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
                     }
+                }
                 break;
             }
 
@@ -1470,7 +1872,7 @@ namespace DatabaseCloner {
             List<table_entry> tableList = new List<table_entry>();
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, o.name FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id WHERE type = 'FN' AND is_ms_shipped = 0 ORDER BY s.name, o.name";
                     try {
@@ -1482,9 +1884,10 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get function list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + database_name + "' ORDER BY name";
                     try {
@@ -1496,10 +1899,7 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get function list.\r\n" + ex.Message );
                     }
-                break;
-
-                case "sqlite":
-
+                }
                 break;
             }
 
@@ -1510,7 +1910,7 @@ namespace DatabaseCloner {
             List<table_entry> tableList = new List<table_entry>();
 
             switch( db.server_type.ToLower() ) {
-                case "mssql":
+                case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT name FROM sys.triggers WHERE type = 'TR' ORDER BY name";
                     try {
@@ -1522,9 +1922,10 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "mysql":
+                case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + database_name + "' ORDER BY trigger_name";
                     try {
@@ -1536,9 +1937,10 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
                     }
+                }
                 break;
 
-                case "sqlite":
+                case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     sqliteCom.CommandText = "SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name";
                     try {
@@ -1549,6 +1951,7 @@ namespace DatabaseCloner {
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
                     }
+                }
                 break;
             }
 
@@ -1573,9 +1976,6 @@ namespace DatabaseCloner {
         public List<database_constraint> constraint = new List<database_constraint>();
         public List<database_uniquekey> uniquekey = new List<database_uniquekey>();
         public List<database_foreignkey> foreignkey = new List<database_foreignkey>();
-
-        /* SQLite */
-        public List<database_references> references = new List<database_references>();
 
         public database_table( string schema, string name ) {
             this.schema = schema;
@@ -1689,6 +2089,11 @@ namespace DatabaseCloner {
         public string rschema { get; set; }
         public string rtable { get; set; }
         public List<string> rcolumn { get; set; }
+
+        /**
+         * SQLite
+         **/
+        public database_references references { get; set; }
 
         public database_foreignkey( ) {
 
