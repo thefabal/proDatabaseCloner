@@ -76,7 +76,7 @@ namespace DatabaseCloner {
             try {
                 List<table_entry> tableList = backup_settings.getProceduresList();
                 foreach( table_entry tn in tableList ) {
-                    dgvTableList.Rows[ dgvTableList.Rows.Add( "procedures", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
+                    dgvTableList.Rows[ dgvTableList.Rows.Add( "procedure", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
             } catch( Exception ex ) {
                 MessageBox.Show( ex.Message );

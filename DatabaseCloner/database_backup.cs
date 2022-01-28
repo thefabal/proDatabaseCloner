@@ -915,7 +915,7 @@ namespace DatabaseCloner {
         private bool getProcedure() {
             string functions = string.Empty;
             foreach( backup_settings entry in backup_settings ) {
-                if( entry.type == "procedures" && entry.schema ) {
+                if( entry.type == "procedure" && entry.schema ) {
                     functions += "'" + entry.name + "', ";
                 }
             }
