@@ -23,6 +23,7 @@ namespace DatabaseCloner {
         private readonly Dictionary<string, database_view> view = new Dictionary<string, database_view>();
         private readonly Dictionary<string, database_function> function = new Dictionary<string, database_function>();
         private readonly Dictionary<string, database_trigger> trigger = new Dictionary<string, database_trigger>();
+        private readonly Dictionary<string, database_procedure> procedure = new Dictionary<string, database_procedure>();
 
         private StreamWriter sw;
         private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
@@ -50,7 +51,7 @@ namespace DatabaseCloner {
         public bool getDatabase( ) {
             this.updateStatus( this, "Generating Table's Schema" );
 
-            if( getTable() && getView() && getFunction() && getTrigger() ) {
+            if( getTable() && getView() && getFunction() && getTrigger() && getProcedure() ) {
 
             } else {
                 this.updateStatus( this, "enableForm" );
@@ -87,6 +88,10 @@ namespace DatabaseCloner {
                     }
                 } else if( bs.type == "trigger" && bs.schema ) {
                     if( getTableTrigger( trigger[ bs.name ] ) == false ) {
+                        return false;
+                    }
+                } else if( bs.type == "procedure" && bs.schema ) {
+                    if( getTableProcedure( procedure[ bs.name ] ) == false ) {
                         return false;
                     }
                 }
@@ -185,8 +190,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        this.updateStatus( this, "Error : " + ex.Message );
-                        this.updateStatus( this, "enableForm" );
+                        updateStatus( this, "Error : " + ex.Message );
+                        updateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -202,7 +207,7 @@ namespace DatabaseCloner {
         }
 
         private bool getColumn() {
-            this.updateStatus( this, "Generating Table's Column Info" );
+            updateStatus( this, "Generating Table's Column Info" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -314,7 +319,7 @@ namespace DatabaseCloner {
         }
 
         private bool getConstraint() {
-            this.updateStatus( this, "Generating Table's Constraint Info" );
+            updateStatus( this, "Generating Table's Constraint Info" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -434,7 +439,7 @@ namespace DatabaseCloner {
         }
 
         private bool getUniqueKey() {
-            this.updateStatus( this, "Generating Table's Unique Keys" );
+            updateStatus( this, "Generating Table's Unique Keys" );
 
             string tables = string.Empty;
             foreach( KeyValuePair<string, database_table> entry in table ) {
@@ -536,7 +541,7 @@ namespace DatabaseCloner {
         }
 
         private bool getForeignKey() {
-            this.updateStatus( this, "Generating Table's Unique Keys" );
+            updateStatus( this, "Generating Table's Unique Keys" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -900,6 +905,60 @@ namespace DatabaseCloner {
 
                         return false;
                     }
+                }
+                break;
+            }
+
+            return true;
+        }
+
+        private bool getProcedure() {
+            string functions = string.Empty;
+            foreach( backup_settings entry in backup_settings ) {
+                if( entry.type == "procedures" && entry.schema ) {
+                    functions += "'" + entry.name + "', ";
+                }
+            }
+
+            if( functions.Length == 0 ) {
+                return true;
+            } else {
+                functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
+            }
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT v.name, s.definition FROM sys.procedures AS v INNER JOIN sys.sql_modules AS s ON v.object_id = s.object_id WHERE v.name IN(" + functions + ")";
+
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        if( mssqlReader.HasRows ) {
+                            while( mssqlReader.Read() ) {
+                                procedure.Add( mssqlReader.GetString( 0 ), new database_procedure() {
+                                    name = mssqlReader.GetString( 0 ),
+                                    schema = mssqlReader.GetString( 1 )
+                                } );
+                            }
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "getProcedures" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        return false;
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    /** TODO **/
+                }
+                break;
+
+                case "sqlite": {
+                    /** TODO **/
                 }
                 break;
             }
@@ -1764,6 +1823,32 @@ namespace DatabaseCloner {
             return true;
         }
 
+        private bool getTableProcedure( database_procedure entry_procedure ) {
+            string schema = string.Empty;
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    schema = entry_procedure.schema + ";\r\n\r\n";
+                }
+                break;
+
+                case "mysql": {
+                    /** TODO **/
+                }
+                break;
+
+                case "sqlite": {
+                    /** TODO **/
+                }
+                break;
+            }
+
+            sw.Write( schema );
+            sw.Flush();
+
+            return true;
+        }
+
         public List<table_entry> getTableList() {
             List<table_entry> tableList = new List<table_entry>();
 
@@ -1957,6 +2042,51 @@ namespace DatabaseCloner {
 
             return tableList;
         }
+
+        public List<table_entry> getProceduresList() {
+            List<table_entry> tableList = new List<table_entry>();
+
+            switch( db.server_type.ToLower() ) {
+                case "mssql": {
+                    List<string> msShipped = new List<string>() {
+                        "sp_dropdiagram",
+                        "sp_alterdiagram",
+                        "sp_renamediagram",
+                        "sp_creatediagram",
+                        "sp_helpdiagramdefinition",
+                        "sp_helpdiagrams",
+                        "sp_upgraddiagrams"
+                    };
+
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT name FROM sys.procedures";
+                    try {
+                        SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
+                        while( mssqlReader.Read() ) {
+                            if( msShipped.Contains( mssqlReader.GetString( 0 ) ) == false ) {
+                                tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                            }                            
+                        }
+                        mssqlReader.Close();
+                    } catch( Exception ex ) {
+                        throw new Exception( "Could not get view list.\r\n" + ex.Message );
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    /** TODO **/
+                }
+                break;
+
+                case "sqlite": {
+                    /** TODO **/
+                }
+                break;
+            }
+
+            return tableList;
+        }
     }
 
     public class database_table {
@@ -2012,6 +2142,15 @@ namespace DatabaseCloner {
         public string security_type { get; set; }
 
         public database_view( ) {
+
+        }
+    }
+
+    public class database_procedure {
+        public string name { get; set; }
+        public string schema { get; set; }
+
+        public database_procedure() {
 
         }
     }
