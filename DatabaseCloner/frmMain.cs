@@ -32,11 +32,11 @@ namespace DatabaseCloner {
         }
 
         private void frmMain_Load( object sender, EventArgs e ) {
-            settings.Get();
+            settings.get();
         }
 
         private void frmMain_FormClosing( object sender, FormClosingEventArgs e ) {
-            settings.Save();
+            settings.save();
         }
 
         private void btnGenerateSource_Click( object sender, EventArgs e ) {
@@ -221,7 +221,7 @@ namespace DatabaseCloner {
 
         }
 
-        public void Add( proGEDIA.utilities.database set ) {
+        public void add( proGEDIA.utilities.database set ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
                 if( item.value.server_type == set.server_type && item.value.server_name == set.server_name && item.value.server_port == set.server_port ) {
                     database.RemoveAt( item.i );
@@ -233,7 +233,7 @@ namespace DatabaseCloner {
             database.Add( set );
         }
 
-        public void Remove( string server_type, string server_name, string database_file, string user_name ) {
+        public void remove( string server_type, string server_name, string database_file, string user_name ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
                 if( item.value.Compare( server_type, server_name, database_file, user_name ) ) {
                     database.RemoveAt( item.i );
@@ -243,7 +243,7 @@ namespace DatabaseCloner {
             }
         }
 
-        public void Get() {
+        public void get() {
             string database_setting = Properties.Settings.Default.database_setting.ToString();
             if( database_setting.Length > 0 ) {
                 database_setting = proGEDIA.utilities.encryption.DecryptPassword( database_setting );
@@ -259,7 +259,7 @@ namespace DatabaseCloner {
             row_per_insert = Properties.Settings.Default.row_per_insert;
         }
 
-        public void Save() {
+        public void save() {
             for( int i = 0; i < database.Count; i++ ) {
                 if( database[ i ].remember_password == false ) {
                     database[ i ].user_pass = string.Empty;

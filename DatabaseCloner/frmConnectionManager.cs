@@ -169,13 +169,13 @@ namespace DatabaseCloner {
             }
 
             database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, tbDatabaseFile.Text, cbAuthentication.SelectedIndex, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
-            frmMain.settings.Add( database );
+            frmMain.settings.add( database );
 
             this.DialogResult = DialogResult.OK;
         }
 
         private void btnDelete_Click( object sender, EventArgs e ) {
-            frmMain.settings.Remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
+            frmMain.settings.remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
         }
 
         private void BtnBrowse_Click( object sender, EventArgs e ) {
