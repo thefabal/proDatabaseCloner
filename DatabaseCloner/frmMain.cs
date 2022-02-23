@@ -151,7 +151,11 @@ namespace DatabaseCloner {
                 if( frmDataSelector.ShowDialog() == DialogResult.OK ) {
                     string schema = string.Empty;
 
-                    SaveFileDialog sfd = new SaveFileDialog();
+                    SaveFileDialog sfd = new SaveFileDialog {
+                        FileName = cbDatabaseSource.SelectedItem.ToString(),
+                        Filter = "SQL (*.sql)|*.sql|Text (*.txt)|*.txt"
+                    };
+
                     if( sfd.ShowDialog() == DialogResult.OK ) {
                         disableForm();
 

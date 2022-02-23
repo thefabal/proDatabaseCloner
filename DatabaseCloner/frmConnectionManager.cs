@@ -24,9 +24,13 @@ namespace DatabaseCloner {
         }
 
         private void cbServerType_SelectedIndexChanged( object sender, EventArgs e ) {
+            cbAuthentication.SelectedIndexChanged -= cbAuthentication_SelectedIndexChanged;
+
             switch(cbServerType.SelectedItem.ToString()) {
                 case "MsSQL":
                     tbServerPort.Enabled = false;
+                    tbServerPort.Text = "1433";
+
                     lblServiceName.Enabled = false;
                     tbServiceName.Enabled = false;
                     lblDatabaseName.Enabled = false;
@@ -38,10 +42,13 @@ namespace DatabaseCloner {
                     lblAuthentication.Enabled = true;
 
                     cbAuthentication_SelectedIndexChanged( null, null );
+                    cbAuthentication.SelectedIndexChanged += cbAuthentication_SelectedIndexChanged;
                 break;
 
                 case "MySQL":
                     tbServerPort.Enabled = true;
+                    tbServerPort.Text = "3306";
+
                     lblServiceName.Enabled = false;
                     tbServiceName.Enabled = false;
                     lblDatabaseName.Enabled = true;
@@ -59,6 +66,8 @@ namespace DatabaseCloner {
 
                 case "Oracle":
                     tbServerPort.Enabled = true;
+                    tbServerPort.Text = "1521";
+
                     lblServiceName.Enabled = true;
                     tbServiceName.Enabled = true;
                     lblDatabaseName.Enabled = false;
@@ -76,6 +85,8 @@ namespace DatabaseCloner {
 
                 case "SQLite":
                     tbServerPort.Enabled = false;
+                    tbServerPort.Text = "";
+
                     lblServiceName.Enabled = false;
                     tbServiceName.Enabled = false;
                     lblDatabaseName.Enabled = false;
@@ -178,7 +189,7 @@ namespace DatabaseCloner {
             frmMain.settings.remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
         }
 
-        private void BtnBrowse_Click( object sender, EventArgs e ) {
+        private void btnBrowse_Click( object sender, EventArgs e ) {
             OpenFileDialog openFileDialog = new OpenFileDialog() {
                 CheckFileExists = true,
                 Multiselect = false

@@ -106,14 +106,14 @@ namespace DatabaseCloner {
             string tables = string.Empty;
             foreach( backup_settings entry in backup_settings ) {
                 if( entry.type == "table" ) {
-                    tables += "'" + entry.name + "', ";
+                    tables += ", '" + entry.name + "'";
                 }
             }
 
             if( tables.Length == 0 ) {
                 return true;
             } else {
-                tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
+                tables = tables.Substring( 2 );
             }
 
             switch( db.server_type.ToLower() ) {
@@ -248,7 +248,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + database_name + "' AND table_name IN(" + string.Join( ", ", table.Keys.ToArray() ) + ") ORDER BY table_name, ordinal_position";
+                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + database_name + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name, ordinal_position";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -441,21 +441,10 @@ namespace DatabaseCloner {
         private bool getUniqueKey() {
             updateStatus( this, "Generating Table's Unique Keys" );
 
-            string tables = string.Empty;
-            foreach( KeyValuePair<string, database_table> entry in table ) {
-                tables += "'" + entry.Key + "', ";
-            }
-
-            if( tables.Length == 0 ) {
-                return true;
-            } else {
-                tables = proGEDIA.utilities.StringExtensions.Cut( tables, 2 );
-            }
-
             switch( db.server_type.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN(" + tables + ") ORDER BY t.name, i.name";
+                    mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, i.name";
                     try {
                         string pre = string.Empty;
 
@@ -503,7 +492,7 @@ namespace DatabaseCloner {
                 case "sqlite": {
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     try {
-                        sqliteCom.CommandText = "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND name IN(" + tables + ")";
+                        sqliteCom.CommandText = "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "')";
 
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
@@ -595,8 +584,46 @@ namespace DatabaseCloner {
                 break;
 
                 case "mysql": {
+                        MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                        mysqlCom.CommandText = "SELECT t1.ID, t1.FOR_NAME, t1.REF_NAME, t2.FOR_COL_NAME, t2.REF_COL_NAME, t3.UPDATE_RULE, t3.DELETE_RULE FROM INFORMATION_SCHEMA.INNODB_FOREIGN AS t1 INNER JOIN INFORMATION_SCHEMA.INNODB_FOREIGN_COLS AS t2 ON t1.ID = t2.ID INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3 ON t1.ID = CONCAT( t3.CONSTRAINT_SCHEMA, '/', t3.CONSTRAINT_NAME) WHERE t1.FOR_NAME IN('" + database_name + "/" + string.Join( "', '" + database_name + "/", table.Keys.ToArray() ) + "')";
+                        try {
+                            MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
+                            if( mysqlReader.HasRows ) {
+                                string tableName = string.Empty;
+                                string fkName = string.Empty;
+                                string fkReferences = string.Empty;
 
-                }
+                                while( mysqlReader.Read() ) {                                    
+                                    tableName = mysqlReader.GetString( 1 );
+                                    tableName = tableName.Substring( tableName.IndexOf( "/" ) + 1 );
+
+                                    fkName = mysqlReader.GetString( 0 );
+                                    fkName = fkName.Substring( fkName.IndexOf( "/" ) + 1 );
+
+                                    fkReferences = mysqlReader.GetString( 2 );
+                                    fkReferences = fkReferences.Substring( fkReferences.IndexOf( "/" ) + 1 );
+
+                                    table[ tableName ].foreignkey.Add( new database_foreignkey() {
+                                        name = fkName,
+                                        column = new List<string>() { mysqlReader.GetString( 3 ) },
+                                        ptable = tableName,
+                                        rtable = fkReferences,
+                                        rcolumn = new List<string>() { mysqlReader.GetString( 4 ) },
+                                        on_update = mysqlReader.GetString( 5 ),
+                                        on_delete = mysqlReader.GetString( 6 )
+                                    } );
+                                }
+                            }
+                            mysqlReader.Close();
+                        } catch( Exception ex ) {
+                            log.LogWrite( "getView" );
+                            log.LogWrite( mysqlCom.CommandText );
+                            log.LogWrite( ex.Message );
+
+                            return false;
+                        }
+
+                    }
                 break;
 
                 case "sqlite": {
@@ -610,11 +637,11 @@ namespace DatabaseCloner {
                                 table[ key ].foreignkey.Add( new database_foreignkey() {
                                     column = new List<string>() { sqliteReader.GetString( 3 ) },
                                     references = new database_references() {
-                                    table = sqliteReader.GetString( 2 ),
-                                    column = sqliteReader.GetString( 4 ),
-                                    on_update = sqliteReader.GetString( 5 ),
-                                    on_delete = sqliteReader.GetString( 6 )
-                                }
+                                        table = sqliteReader.GetString( 2 ),
+                                        column = sqliteReader.GetString( 4 ),
+                                        on_update = sqliteReader.GetString( 5 ),
+                                        on_delete = sqliteReader.GetString( 6 )
+                                    }
                                 } );
                             }
 
@@ -701,7 +728,6 @@ namespace DatabaseCloner {
 
                         return false;
                     }
-
                 }
                 break;
 
@@ -778,19 +804,25 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name, param_list, returns, body, definer FROM mysql.proc WHERE db = '" + database_name + "' AND name IN(" + functions + ")";
+                    mysqlCom.CommandText = "SELECT t1.specific_name, t1.routine_schema, t1.routine_name, t1.data_type, t1.routine_definition, t1.definer, t1.is_deterministic, t2.parameter_name, t2.data_type FROM information_schema.routines AS t1 LEFT JOIN information_schema.PARAMETERS AS t2 ON t1.routine_schema = t2.specific_schema AND t1.specific_name = t2.specific_name WHERE t1.routine_schema = '" + database_name + "' AND t1.specific_name IN(" + functions + ") ORDER BY t1.specific_name, t2.ordinal_position";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
                             while( mysqlReader.Read() ) {
-                                function.Add( mysqlReader.GetString( 0 ), new database_function() {
-                                    name = mysqlReader.GetString( 0 ),
-                                    param_list = mysqlReader.GetString( 1 ),
-                                    returns = mysqlReader.GetString( 2 ),
-                                    schema = mysqlReader.GetString( 3 ),
-                                    definer = mysqlReader.GetString( 4 )
-                                } );
+                                if( function.ContainsKey( mysqlReader.GetString( 0 ) ) == false ) {
+                                    function.Add( mysqlReader.GetString( 0 ), new database_function() {
+                                        name = mysqlReader.GetString( 0 ),
+                                        returns = mysqlReader.GetString( 3 ),
+                                        schema = mysqlReader.GetString( 4 ),
+                                        definer = mysqlReader.GetString( 5 ),
+                                        is_deterministic = (mysqlReader.GetString( 6 ) == "YES") ?( true ):( false )
+                                    } );
+                                }
+
+                                if( mysqlReader.IsDBNull( 7 ) == false ) {
+                                    function[ mysqlReader.GetString( 0 ) ].param_list.Add( new param_list( mysqlReader.GetString( 7 ), mysqlReader.GetString( 8 ) ) );
+                                }                                
                             }
                         }
                         mysqlReader.Close();
@@ -1283,7 +1315,21 @@ namespace DatabaseCloner {
                     break;
 
                     case "mysql": {
+                            schema += "\r\nALTER TABLE " + foreignkey[ 0 ].ptable + "";
 
+                            foreach( database_foreignkey entry_foreignkey in foreignkey ) {
+                                schema += "\r\nADD CONSTRAINT " + entry_foreignkey.name + " FOREIGN KEY (";
+                                foreach( string column in entry_foreignkey.column ) {
+                                    schema += "" + column + ", ";
+                                }
+                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                                schema += ") REFERENCES " + entry_foreignkey.rtable + " (";
+                                foreach( string column in entry_foreignkey.rcolumn ) {
+                                    schema += "" + column + ", ";
+                                }
+                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                                schema += ") ON DELETE CASCADE ON UPDATE RESTRICT";
+                            }
                     }
                     break;
 
@@ -1530,6 +1576,11 @@ namespace DatabaseCloner {
                                             }                                            
                                             break;
 
+                                            case "Decimal": {
+                                                schema += "" + mysqlReader.GetDecimal( i ) + "";
+                                            }
+                                            break;
+
                                             case "Double": {
                                                 schema += "" + mysqlReader.GetDouble( i ) + "";
                                             }                                            
@@ -1774,7 +1825,22 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     schema += "DELIMITER $$\r\n";
-                    schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(" + entry_function.param_list + ") RETURNS " + entry_function.returns + "\r\n";
+                    schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(";
+
+                    if( entry_function.param_list.Count > 0 ) {
+                        foreach( param_list item in entry_function.param_list ) {
+                            schema += item.name + " " + item.type + ", ";
+                        }
+
+                        schema = schema.Substring( 0, schema.Length - 2 );
+                    }
+                    
+                    schema += ") RETURNS " + entry_function.returns + "\r\n";
+                    
+                    if( entry_function.is_deterministic ) {
+                        schema += "\tDETERMINISTIC\r\n";
+                    }
+
                     schema += entry_function.schema;
                     schema += "$$\r\n";
                     schema += "DELIMITER;\r\n\r\n";
@@ -1974,7 +2040,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT name FROM mysql.proc WHERE db = '" + database_name + "' ORDER BY name";
+                    mysqlCom.CommandText = "SELECT routine_name FROM information_schema.routines WHERE routine_type = 'FUNCTION' AND routine_schema = '" + database_name + "' ORDER BY routine_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -2157,13 +2223,14 @@ namespace DatabaseCloner {
 
     public class database_function {
         public string name { get; set; }
-        public string param_list { get; set; }
+        public List<param_list> param_list;
         public string returns { get; set; }
         public string schema { get; set; }
         public string definer { get; set; }
+        public bool is_deterministic;
 
         public database_function() {
-
+            param_list = new List<param_list>();
         }
     }
 
@@ -2228,6 +2295,8 @@ namespace DatabaseCloner {
         public string rschema { get; set; }
         public string rtable { get; set; }
         public List<string> rcolumn { get; set; }
+        public string on_update { get; set; }
+        public string on_delete { get; set; }
 
         /**
          * SQLite
@@ -2253,6 +2322,16 @@ namespace DatabaseCloner {
         public table_entry( string schema, string name) {
             this.schema = schema;
             this.name = name;
+        }
+    }
+
+    public class param_list {
+        public string name;
+        public string type;
+
+        public param_list( string name, string type ) {
+            this.name = name;
+            this.type = type;
         }
     }
 

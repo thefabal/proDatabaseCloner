@@ -152,7 +152,7 @@ namespace DatabaseCloner {
             this.DialogResult = DialogResult.OK;
         }
 
-        private void DgvTableList_ColumnWidthChanged( object sender, DataGridViewColumnEventArgs e ) {
+        private void dgvTableList_ColumnWidthChanged( object sender, DataGridViewColumnEventArgs e ) {
             arrangeCheckboxes();
         }
     }

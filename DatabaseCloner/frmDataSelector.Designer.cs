@@ -106,7 +106,7 @@
             this.dgvTableList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dgvTableList.Size = new System.Drawing.Size(404, 328);
             this.dgvTableList.TabIndex = 4;
-            this.dgvTableList.ColumnWidthChanged += new System.Windows.Forms.DataGridViewColumnEventHandler(this.DgvTableList_ColumnWidthChanged);
+            this.dgvTableList.ColumnWidthChanged += new System.Windows.Forms.DataGridViewColumnEventHandler(this.dgvTableList_ColumnWidthChanged);
             // 
             // Column1
             // 

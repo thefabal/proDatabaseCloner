@@ -77,7 +77,6 @@
             this.cbAuthentication.Name = "cbAuthentication";
             this.cbAuthentication.Size = new System.Drawing.Size(169, 21);
             this.cbAuthentication.TabIndex = 6;
-            this.cbAuthentication.SelectedIndexChanged += new System.EventHandler(this.cbAuthentication_SelectedIndexChanged);
             // 
             // lblAuthentication
             // 
@@ -250,7 +249,7 @@
             this.btnBrowse.TabIndex = 63;
             this.btnBrowse.Text = "Browse";
             this.btnBrowse.UseVisualStyleBackColor = true;
-            this.btnBrowse.Click += new System.EventHandler(this.BtnBrowse_Click);
+            this.btnBrowse.Click += new System.EventHandler(this.btnBrowse_Click);
             // 
             // frmConnectionManager
             // 
