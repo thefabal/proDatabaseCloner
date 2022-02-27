@@ -38,7 +38,7 @@ namespace DatabaseCloner {
              * Tables
             **/
             try {
-                List<table_entry> tableList = backup_settings.getTableList();
+                List<table_entry> tableList = backup_settings.getListTable();
                 foreach( table_entry tn in tableList ) {
                     dgvTableList.Rows.Add( "table", tn.schema, tn.name, true, true );
                 }
@@ -50,7 +50,7 @@ namespace DatabaseCloner {
               * Views
              **/
             try {
-                List<table_entry> tableList = backup_settings.getViewList();
+                List<table_entry> tableList = backup_settings.getListView();
                 foreach( table_entry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "view", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
@@ -62,7 +62,7 @@ namespace DatabaseCloner {
              * Functions
             **/
             try {
-                List<table_entry> tableList = backup_settings.getFunctionList();
+                List<table_entry> tableList = backup_settings.getListFunction();
                 foreach( table_entry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "function", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
@@ -74,7 +74,7 @@ namespace DatabaseCloner {
              * Stored Procedures
             **/
             try {
-                List<table_entry> tableList = backup_settings.getProceduresList();
+                List<table_entry> tableList = backup_settings.getListProcedures();
                 foreach( table_entry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "procedure", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
@@ -86,7 +86,7 @@ namespace DatabaseCloner {
              * Database Triggers
             **/
             try {
-                List<table_entry> tableList = backup_settings.getTriggerList();
+                List<table_entry> tableList = backup_settings.getListTrigger();
                 foreach( table_entry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "trigger", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
