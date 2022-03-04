@@ -12,12 +12,12 @@ using MySql.Data.MySqlClient;
 
 namespace DatabaseCloner {
     public partial class frmDataSelector: Form {
-        public database_backup backup_settings;
+        public databaseBackup backup_settings;
 
         private readonly proGEDIA.utilities.database database;
         private readonly string db_name;
 
-        public frmDataSelector( proGEDIA.utilities.database database, string db_name, ref database_backup backup_settings ) {
+        public frmDataSelector( proGEDIA.utilities.database database, string db_name, ref databaseBackup backup_settings ) {
             this.database = database;
             this.db_name = db_name;
             this.backup_settings = backup_settings;
@@ -136,10 +136,10 @@ namespace DatabaseCloner {
         }
 
         private void btnOK_Click( object sender, EventArgs e ) {
-            backup_settings.backup_settings.Clear();
+            backup_settings.backupSettings.Clear();
 
             foreach( DataGridViewRow row in dgvTableList.Rows ) {
-                backup_settings.backup_settings.Add( 
+                backup_settings.backupSettings.Add( 
                     new backup_settings( 
                         row.Cells[ 0 ].Value.ToString(), 
                         row.Cells[ 1 ].Value.ToString(), 

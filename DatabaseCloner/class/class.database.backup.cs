@@ -12,10 +12,10 @@ using MySql.Data.MySqlClient;
 using System.Text.RegularExpressions;
 
 namespace DatabaseCloner {
-    public class database_backup {
-        public string database_name = string.Empty;
+    public class databaseBackup {
+        public string databaseName = string.Empty;
 
-        public List<backup_settings> backup_settings = new List<backup_settings>();
+        public List<backup_settings> backupSettings = new List<backup_settings>();
 
         public event EventHandler<string> updateStatus;
 
@@ -28,23 +28,16 @@ namespace DatabaseCloner {
         private StreamWriter sw;
         private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
         private readonly proGEDIA.utilities.database db;
-        private readonly int row_per_insert;
+        private readonly int rowPerInsert;
 
-        public database_backup( proGEDIA.utilities.database db, string database_name, int row_per_insert ) {
+        public databaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert ) {
             this.db = db;
-            this.database_name = database_name;
-            this.row_per_insert = row_per_insert;
+            this.databaseName = databaseName;
+            this.rowPerInsert = rowPerInsert;
 
             switch( db.serverType.ToLower() ) {
-                case "mssql": {
-                    db.mssqlCon.ChangeDatabase( database_name );
-                }                    
-                break;
-
-                case "mysql": {
-                    db.mysqlCon.ChangeDatabase( database_name );
-                }                    
-                break;
+                case "mssql": { db.mssqlCon.ChangeDatabase( databaseName ); } break;
+                case "mysql": { db.mysqlCon.ChangeDatabase( databaseName ); } break;
             }
         }
 
@@ -65,7 +58,7 @@ namespace DatabaseCloner {
         public bool getSchema( StreamWriter sw ) {
             this.sw = sw;
 
-            foreach( backup_settings bs in backup_settings ) {
+            foreach( backup_settings bs in backupSettings ) {
                 if( bs.type == "table" ) {
                     if( bs.schema ) {
                         if( writeSchemaTable( table[ bs.name ] ) == false ) {
@@ -110,7 +103,7 @@ namespace DatabaseCloner {
 
         private bool getSchemaTable( ) {
             string tables = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
+            foreach( backup_settings entry in backupSettings ) {
                 if( entry.type == "table" ) {
                     tables += ", '" + entry.name + "'";
                 }
@@ -152,7 +145,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name, auto_increment FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' AND table_name IN(" + tables + ") ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name, engine, table_collation, character_set_name, auto_increment FROM information_schema.tables AS t LEFT JOIN information_schema.collation_character_set_applicability AS c ON t.table_collation = c.collation_name WHERE table_type = 'BASE TABLE' AND table_schema = '" + databaseName + "' AND table_name IN(" + tables + ") ORDER BY table_name";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -255,7 +248,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, character_set_name, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + database_name + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name, ordinal_position";
+                    mysqlCom.CommandText = "SELECT table_name, column_name, column_default, is_nullable, column_type, character_set_name, collation_name, extra FROM information_schema.columns WHERE table_schema = '" + databaseName + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name, ordinal_position";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -377,7 +370,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + database_name + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name, non_unique, index_name, column_name FROM information_schema.statistics WHERE table_schema = '" + databaseName + "' AND table_name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY table_name";
                     try {
                         string pre = string.Empty;
 
@@ -593,7 +586,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                         MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                        mysqlCom.CommandText = "SELECT t1.ID, t1.FOR_NAME, t1.REF_NAME, t2.FOR_COL_NAME, t2.REF_COL_NAME, t3.UPDATE_RULE, t3.DELETE_RULE FROM INFORMATION_SCHEMA.INNODB_FOREIGN AS t1 INNER JOIN INFORMATION_SCHEMA.INNODB_FOREIGN_COLS AS t2 ON t1.ID = t2.ID INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3 ON t1.ID = CONCAT( t3.CONSTRAINT_SCHEMA, '/', t3.CONSTRAINT_NAME) WHERE t1.FOR_NAME IN('" + database_name + "/" + string.Join( "', '" + database_name + "/", table.Keys.ToArray() ) + "')";
+                        mysqlCom.CommandText = "SELECT t1.ID, t1.FOR_NAME, t1.REF_NAME, t2.FOR_COL_NAME, t2.REF_COL_NAME, t3.UPDATE_RULE, t3.DELETE_RULE FROM INFORMATION_SCHEMA.INNODB_FOREIGN AS t1 INNER JOIN INFORMATION_SCHEMA.INNODB_FOREIGN_COLS AS t2 ON t1.ID = t2.ID INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3 ON t1.ID = CONCAT( t3.CONSTRAINT_SCHEMA, '/', t3.CONSTRAINT_NAME) WHERE t1.FOR_NAME IN('" + databaseName + "/" + string.Join( "', '" + databaseName + "/", table.Keys.ToArray() ) + "')";
                         try {
                             MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                             if( mysqlReader.HasRows ) {
@@ -674,7 +667,7 @@ namespace DatabaseCloner {
 
         private bool getSchemaView( ) {
             string views = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
+            foreach( backup_settings entry in backupSettings ) {
                 if( entry.type == "view" && entry.schema ) {
                     views += "'" + entry.name + "', ";
                 }
@@ -714,7 +707,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + database_name + "' AND table_name IN(" + views + ")";
+                    mysqlCom.CommandText = "SELECT table_name, view_definition, definer, security_type FROM information_schema.views WHERE table_schema = '" + databaseName + "' AND table_name IN(" + views + ")";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -772,7 +765,7 @@ namespace DatabaseCloner {
 
         private bool getSchemaFunction( ) {
             string functions = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
+            foreach( backup_settings entry in backupSettings ) {
                 if( entry.type == "function" && entry.schema ) {
                     functions += "'" + entry.name + "', ";
                 }
@@ -812,7 +805,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT t1.specific_name, t1.routine_schema, t1.routine_name, t1.data_type, t1.routine_definition, t1.definer, t1.is_deterministic, t2.parameter_name, t2.data_type FROM information_schema.routines AS t1 LEFT JOIN information_schema.PARAMETERS AS t2 ON t1.routine_schema = t2.specific_schema AND t1.specific_name = t2.specific_name WHERE t1.routine_schema = '" + database_name + "' AND t1.specific_name IN(" + functions + ") ORDER BY t1.specific_name, t2.ordinal_position";
+                    mysqlCom.CommandText = "SELECT t1.specific_name, t1.routine_schema, t1.routine_name, t1.data_type, t1.routine_definition, t1.definer, t1.is_deterministic, t2.parameter_name, t2.data_type FROM information_schema.routines AS t1 LEFT JOIN information_schema.PARAMETERS AS t2 ON t1.routine_schema = t2.specific_schema AND t1.specific_name = t2.specific_name WHERE t1.routine_schema = '" + databaseName + "' AND t1.specific_name IN(" + functions + ") ORDER BY t1.specific_name, t2.ordinal_position";
 
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
@@ -855,7 +848,7 @@ namespace DatabaseCloner {
 
         private bool getSchemaTrigger( ) {
             string triggers = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
+            foreach( backup_settings entry in backupSettings ) {
                 if( entry.type == "trigger" && entry.schema ) {
                     triggers += "'" + entry.name + "', ";
                 }
@@ -894,7 +887,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + database_name + "' AND trigger_name IN(" + triggers + ")";
+                    mysqlCom.CommandText = "SELECT trigger_name, event_object_table, action_timing, event_manipulation, action_statement, action_orientation FROM information_schema.triggers WHERE trigger_schema = '" + databaseName + "' AND trigger_name IN(" + triggers + ")";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
@@ -954,7 +947,7 @@ namespace DatabaseCloner {
 
         private bool getSchemaProcedure() {
             string functions = string.Empty;
-            foreach( backup_settings entry in backup_settings ) {
+            foreach( backup_settings entry in backupSettings ) {
                 if( entry.type == "procedure" && entry.schema ) {
                     functions += "'" + entry.name + "', ";
                 }
@@ -1481,7 +1474,7 @@ namespace DatabaseCloner {
 
                             int j = 0;
                             do {
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema = "INSERT INTO [" + entry_table.schema + "].[" + entry_table.name + "] (" + columns + ") VALUES\r\n";
                                 }
 
@@ -1529,7 +1522,7 @@ namespace DatabaseCloner {
 
                                 schema += ")";
                                 j++;
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema += ";\r\n";
 
                                     sw.Write( schema );
@@ -1596,7 +1589,7 @@ namespace DatabaseCloner {
 
                             int j = 0;
                             do {
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema = "INSERT INTO " + entry_table.name + " (" + columns + ") VALUES\r\n";
                                 }
 
@@ -1629,7 +1622,7 @@ namespace DatabaseCloner {
 
                                 schema += ")";
                                 j++;
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema += ";\r\n";
 
                                     sw.Write( schema );
@@ -1692,7 +1685,7 @@ namespace DatabaseCloner {
 
                             int j = 0;
                             do {
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema = "INSERT INTO " + entry_table.name + " (" + columns + ") VALUES\r\n";
                                 }
 
@@ -1726,7 +1719,7 @@ namespace DatabaseCloner {
 
                                 schema += ")";
                                 j++;
-                                if( j % row_per_insert == 0 ) {
+                                if( j % rowPerInsert == 0 ) {
                                     schema += ";\r\n";
 
                                     sw.Write( schema );
@@ -1915,7 +1908,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + database_name + "' ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = '" + databaseName + "' ORDER BY table_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -1967,7 +1960,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.views WHERE table_schema = '" + database_name + "' ORDER BY table_name";
+                    mysqlCom.CommandText = "SELECT table_name FROM information_schema.views WHERE table_schema = '" + databaseName + "' ORDER BY table_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -2019,7 +2012,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT routine_name FROM information_schema.routines WHERE routine_type = 'FUNCTION' AND routine_schema = '" + database_name + "' ORDER BY routine_name";
+                    mysqlCom.CommandText = "SELECT routine_name FROM information_schema.routines WHERE routine_type = 'FUNCTION' AND routine_schema = '" + databaseName + "' ORDER BY routine_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
@@ -2057,7 +2050,7 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
-                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + database_name + "' ORDER BY trigger_name";
+                    mysqlCom.CommandText = "SELECT trigger_name FROM information_schema.triggers WHERE TRIGGER_SCHEMA = '" + databaseName + "' ORDER BY trigger_name";
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
