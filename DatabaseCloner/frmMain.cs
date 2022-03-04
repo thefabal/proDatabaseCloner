@@ -50,7 +50,7 @@ namespace DatabaseCloner {
 
         private void loadDatabases( proGEDIA.utilities.database db, ComboBox cb ) {
             cb.Items.Clear();
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql":
                     if( db_source.mssqlCon != null && db_source.mssqlCon.State == ConnectionState.Open ) {
                         db_source.mssqlCon.Close();
@@ -128,7 +128,7 @@ namespace DatabaseCloner {
                         return;
                     }
 
-                    cb.Items.Add( db_source.server_name );
+                    cb.Items.Add( db_source.serverName );
                     cb.SelectedIndex = 0;
                 break;
             }
@@ -227,7 +227,7 @@ namespace DatabaseCloner {
 
         public void add( proGEDIA.utilities.database set ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
-                if( item.value.server_type == set.server_type && item.value.server_name == set.server_name && item.value.server_port == set.server_port ) {
+                if( item.value.serverType == set.serverType && item.value.serverName == set.serverName && item.value.serverPort == set.serverPort ) {
                     database.RemoveAt( item.i );
 
                     break;
@@ -265,8 +265,8 @@ namespace DatabaseCloner {
 
         public void save() {
             for( int i = 0; i < database.Count; i++ ) {
-                if( database[ i ].remember_password == false ) {
-                    database[ i ].user_pass = string.Empty;
+                if( database[ i ].rememberPassword == false ) {
+                    database[ i ].userPass = string.Empty;
                 }
 
                 if( database[ i ].mssqlCon != null ) {

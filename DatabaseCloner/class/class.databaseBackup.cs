@@ -35,7 +35,7 @@ namespace DatabaseCloner {
             this.database_name = database_name;
             this.row_per_insert = row_per_insert;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     db.mssqlCon.ChangeDatabase( database_name );
                 }                    
@@ -122,7 +122,7 @@ namespace DatabaseCloner {
                 tables = tables.Substring( 2 );
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, t.name, t.lob_data_space_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.name IN(" + tables + ") ORDER BY t.name";
@@ -220,7 +220,7 @@ namespace DatabaseCloner {
                 return true;
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id WHERE ta.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY ta.name, c.column_id";
@@ -333,7 +333,7 @@ namespace DatabaseCloner {
                 return true;
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT t.name, k.name AS key_name, k.type AS key_type, c.name AS column_name, i.type, ic.is_descending_key, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.key_constraints AS k INNER JOIN sys.tables AS t ON k.parent_object_id = t.object_id INNER JOIN sys.indexes AS i ON i.object_id = t.object_id AND i.name = k.name INNER JOIN sys.schemas AS s ON k.schema_id = s.schema_id INNER JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE k.is_ms_shipped = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, k.type, k.name";
@@ -449,7 +449,7 @@ namespace DatabaseCloner {
         private bool getSchemaTableUniqueKey() {
             updateStatus( this, "Generating Table's Unique Keys" );
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, i.name";
@@ -544,7 +544,7 @@ namespace DatabaseCloner {
                 return true;
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT pc.name AS parent_tname, sf.name AS key_schema, f.name AS key_name, spc.name AS parent_tschema, sc.name AS parent_cname, spr.name AS reference_tschema, pr.name AS reference_tname, sr.name AS reference_cname FROM sys.foreign_keys f INNER JOIN sys.schemas AS sf ON f.schema_id = sf.schema_id INNER JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id INNER JOIN sys.columns AS sc ON k.parent_object_id = sc.object_id AND k.parent_column_id = sc.column_id INNER JOIN sys.columns AS sr ON k.referenced_object_id = sr.object_id AND k.referenced_column_id = sr.column_id INNER JOIN sys.tables pc ON pc.object_id = f.parent_object_id INNER JOIN sys.tables pr ON pr.object_id = f.referenced_object_id INNER JOIN sys.schemas AS spc ON pc.schema_id = spc.schema_id INNER JOIN sys.schemas AS spr ON pr.schema_id = spr.schema_id WHERE pc.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY pc.name, f.name, k.constraint_column_id";
@@ -686,7 +686,7 @@ namespace DatabaseCloner {
                 views = proGEDIA.utilities.StringExtensions.Cut( views, 2 );
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT v.name, s.definition FROM sys.views AS v INNER JOIN sys.sql_modules AS s ON v.object_id = s.object_id WHERE v.name IN(" + views + ")";
@@ -784,7 +784,7 @@ namespace DatabaseCloner {
                 functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT o.name, m.definition FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id INNER JOIN sys.sql_modules AS m ON o.object_id = m.object_id WHERE type = 'FN' AND is_ms_shipped = 0 AND o.name IN(" + functions + ")";
@@ -867,7 +867,7 @@ namespace DatabaseCloner {
                 triggers = proGEDIA.utilities.StringExtensions.Cut( triggers, 2 );
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT t.name, s.definition FROM sys.triggers AS t INNER JOIN sys.sql_modules AS s ON t.object_id = s.object_id WHERE t.type = 'TR' AND t.name IN(" + triggers + ")";
@@ -966,7 +966,7 @@ namespace DatabaseCloner {
                 functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
             }
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT v.name, s.definition FROM sys.procedures AS v INNER JOIN sys.sql_modules AS s ON v.object_id = s.object_id WHERE v.name IN(" + functions + ")";
@@ -1009,7 +1009,7 @@ namespace DatabaseCloner {
         private bool writeSchemaTable( database_table entry_table ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     updateStatus( this, "Generating Table's Schema ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
@@ -1200,7 +1200,7 @@ namespace DatabaseCloner {
         private bool writeSchemaTableAutoIncrement( database_table entry_table ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     
                 }
@@ -1248,7 +1248,7 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             if( constraint.Count > 0 ) {
-                switch( db.server_type.ToLower() ) {
+                switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         foreach( database_constraint entry_constraint in constraint ) {
                             schema += "\r\n\tCONSTRAINT [" + entry_constraint.name + "] ";
@@ -1330,7 +1330,7 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             if( uniquekey.Count > 0 ) {
-                switch( db.server_type.ToLower() ) {
+                switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         foreach( database_uniquekey entry_uniquekey in uniquekey ) {
                             schema += "\r\nCREATE ";
@@ -1392,7 +1392,7 @@ namespace DatabaseCloner {
             string schema = string.Empty;
 
             if( foreignkey.Count > 0 ) {
-                switch( db.server_type.ToLower() ) {
+                switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         schema += "\r\nALTER TABLE [" + foreignkey[ 0 ].pschema + "].[" + foreignkey[ 0 ].ptable + "] ADD ";
                         foreach( database_foreignkey entry_foreignkey in foreignkey ) {
@@ -1450,7 +1450,7 @@ namespace DatabaseCloner {
             string schema = string.Empty;
             Type[ ] tof;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     updateStatus( this, "Generating Table's Data ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
@@ -1770,7 +1770,7 @@ namespace DatabaseCloner {
         private bool writeSchemaView( database_view entry_view ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     schema = entry_view.schema + ";\r\n\r\n";
                 }
@@ -1796,7 +1796,7 @@ namespace DatabaseCloner {
         private bool writeSchemaFunction( database_function entry_function ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     schema = entry_function.schema + ";\r\n\r\n";
                 }
@@ -1840,7 +1840,7 @@ namespace DatabaseCloner {
         private bool writeSchemaTrigger( database_trigger entry_trigger ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     schema = entry_trigger.schema + ";\r\n\r\n";
                 }
@@ -1871,7 +1871,7 @@ namespace DatabaseCloner {
         private bool writeSchemaProcedure( database_procedure entry_procedure ) {
             string schema = string.Empty;
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     schema = entry_procedure.schema + ";\r\n\r\n";
                 }
@@ -1897,7 +1897,7 @@ namespace DatabaseCloner {
         public List<table_entry> getListTable() {
             List<table_entry> tableList = new List<table_entry>();
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, t.name, object_id FROM sys.tables AS t INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id WHERE t.type = 'U' ORDER BY t.name";
@@ -1949,7 +1949,7 @@ namespace DatabaseCloner {
         public List<table_entry> getListView() {
             List<table_entry> tableList = new List<table_entry>();
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT name FROM sys.views";
@@ -2001,7 +2001,7 @@ namespace DatabaseCloner {
         public List<table_entry> getListFunction() {
             List<table_entry> tableList = new List<table_entry>();
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT s.name, o.name FROM sys.all_objects AS o INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id WHERE type = 'FN' AND is_ms_shipped = 0 ORDER BY s.name, o.name";
@@ -2039,7 +2039,7 @@ namespace DatabaseCloner {
         public List<table_entry> getListTrigger() {
             List<table_entry> tableList = new List<table_entry>();
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT name FROM sys.triggers WHERE type = 'TR' ORDER BY name";
@@ -2091,7 +2091,7 @@ namespace DatabaseCloner {
         public List<table_entry> getListProcedures() {
             List<table_entry> tableList = new List<table_entry>();
 
-            switch( db.server_type.ToLower() ) {
+            switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     List<string> msShipped = new List<string>() {
                         "sp_dropdiagram",

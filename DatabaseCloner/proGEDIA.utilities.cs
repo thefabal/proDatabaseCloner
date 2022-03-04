@@ -15,91 +15,6 @@ using MySql.Data.MySqlClient;
 using System.Text.RegularExpressions;
 
 namespace proGEDIA.utilities {
-    public static class Convert {
-        public static Double toDouble( string value ) {
-            return System.Convert.ToDouble( value, CultureInfo.InvariantCulture );
-        }
-
-        public static DateTime toDateTime( string value, bool reserverOrder = false ) {
-            string dateformat = string.Empty;
-            DateTime dt = new DateTime( 1900, 1, 1 );
-
-            if( value.Length == 6 ) {
-                dateformat = "yyMMdd";
-            } else if( value.Length == 10 ) {
-                if( reserverOrder ) {
-                    dateformat = "ddMMyyHHmm";
-                } else {
-                    dateformat = "yyMMddHHmm";
-                }
-            } else if( value.Length == 14 ) {
-                if( value == "00-00-00,00:00" ) {
-                    return dt;
-                }
-                dateformat = "yy-MM-dd,HH:mm";
-            } else if( value.Length == 16 ) {
-                if( value == "00.00.0000 00:00" ) {
-                    return dt;
-                }
-                dateformat = "dd.MM.yyyy HH:mm";
-            } else if( value.Length == 19 ) {
-                dateformat = "yyyy-MM-dd HH:mm:ss";
-            }
-
-            try {
-                if( DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt ) == false ) {
-                    return new DateTime( 1, 1, 1 );
-                }
-            } catch {
-
-            }
-
-            return dt;
-        }
-
-        public static DateTime toDate( string value ) {
-            string dateformat = string.Empty;
-            DateTime dt = new DateTime( 1900, 1, 1 );
-
-            if( value.Length == 6 ) {
-                dateformat = "ddMMyy";
-            } else if( value.Length == 8 ) {
-                dateformat = "yy-MM-dd";
-            } else if( value.Length == 10 ) {
-                dateformat = "dd.MM.yyyy";
-            }
-
-            try {
-                if( DateTime.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt ) == false ) {
-                    return new DateTime( 1, 1, 1 );
-                }
-            } catch {
-
-            }
-
-            return dt;
-        }
-
-        public static TimeSpan toTime( string value ) {
-            string dateformat = string.Empty;
-            TimeSpan ts = new TimeSpan();
-
-            if( value.Length == 6 ) {
-                dateformat = "hhmmss";
-            } else if( value.Length == 8 ) {
-                dateformat = "hh\\:mm\\:ss";
-            }
-
-            try {
-                TimeSpan.TryParseExact( value, dateformat, CultureInfo.InvariantCulture, out ts );
-            } catch {
-
-            }
-
-            return ts;
-        }
-    }
-
     public static class StringExtensions {
         public static string Right( this string str, int length ) {
             if( string.IsNullOrEmpty( str ) ) {
@@ -213,72 +128,71 @@ namespace proGEDIA.utilities {
     }
 
     public class database {
-        public string server_type { get; set; } = "";
-        public string server_name { get; set; } = "";
-        public string server_port { get; set; } = "";
-        public string service_name { get; set; } = "";
-        public string database_name { get; set; } = "";
-        public string database_file { get; set; } = "";
-        public int authentication { get; set; } = 0;
-        public string user_name { get; set; } = "";
-        public string user_pass { get; set; } = "";
-        public bool remember_password { get; set; } = true;
+        public string serverType;
+        public string serverName;
+        public string serverPort;
+        public string serviceName;
+        public string databaseName;
+        public string databaseFile;
+        public string userName;
+        public string userPass;
+        public bool userAuth;
+        public bool rememberPassword;
 
         public SqlConnection mssqlCon;
         public MySqlConnection mysqlCon;
         public SQLiteConnection sqliteCon;
 
         public database( ) {
-
+            userAuth = false;
+            rememberPassword = true;
         }
 
-        public void Set( string server_type, string server_name, string server_port, string service_name, string database_name, string database_file, int authentication, string user_name, string user_pass, bool remember_password ) {
-            this.server_type = server_type;
-            this.server_name = server_name;
-            this.server_port = server_port;
-            this.service_name = service_name;
-            this.database_name = database_name;
-            this.database_file = database_file;
-            this.authentication = authentication;
-            this.user_name = user_name;
-            this.user_pass = user_pass;
-            this.remember_password = remember_password;
+        public void Set( string serverType, string serverName, string serverPort, string serviceName, string databaseName, string databaseFile, bool userAuth, string userName, string userPass, bool rememberPassword ) {
+            this.serverType = serverType;
+            this.serverName = serverName;
+            this.serverPort = serverPort;
+            this.serviceName = serviceName;
+            this.databaseName = databaseName;
+            this.databaseFile = databaseFile;
+            this.userAuth = userAuth;
+            this.userName = userName;
+            this.userPass = userPass;
+            this.rememberPassword = rememberPassword;
         }
 
         public string getConnectionString( ) {
             string connectionString = string.Empty;
-            switch( server_type.ToLower() ) {
+            switch( serverType.ToLower() ) {
                 case "mssql":
-                    // MultipleActiveResultSets=true
-                    if( authentication == 0 )
-                        connectionString = "Data Source=" + server_name + ";Integrated Security=SSPI;";
+                    if( userAuth == false )
+                        connectionString = "Data Source=" + serverName + ";Integrated Security=SSPI;";
                     else
-                        connectionString = "Data Source=" + server_name + ";User id=" + user_name + ";Password=" + user_pass + ";";
+                        connectionString = "Data Source=" + serverName + ";User id=" + userName + ";Password=" + userPass + ";";
                 break;
 
                 case "mysql":
-                    connectionString = "Server=" + server_name + ";";
-                    if( server_port.Length != 0 ) {
-                        connectionString += "Port=" + server_port + ";";
+                    connectionString = "Server=" + serverName + ";";
+                    if( serverPort.Length != 0 ) {
+                        connectionString += "Port=" + serverPort + ";";
                     }
                     
-                    // connectionString += "Database=myDataBase;";
-                    if( user_name.Length != 0 || user_pass.Length != 0 ) {
-                        connectionString += "Uid=" + user_name + ";Pwd=" + user_pass + ";";
+                    if( userName.Length != 0 || userPass.Length != 0 ) {
+                        connectionString += "Uid=" + userName + ";Pwd=" + userPass + ";";
                     }
                     connectionString += "SslMode=none";
                 break;
 
                 case "sqlite":
-                    connectionString = "Data Source=" + database_file + ";Version=3;";
+                    connectionString = "Data Source=" + databaseFile + ";Version=3;";
                 break;
             }
 
             return connectionString;
         }
 
-        public bool Compare( string server_type, string server_name, string database_file, string user_name ) {
-            if( this.server_type == server_type && this.server_name == server_name && this.database_file == database_file && this.user_name == user_name ) {
+        public bool Compare( string serverType, string serverName, string databaseFile, string userName ) {
+            if( this.serverType == serverType && this.serverName == serverName && this.databaseFile == databaseFile && this.userName == userName ) {
                 return true;
             } else {
                 return false;
@@ -286,7 +200,7 @@ namespace proGEDIA.utilities {
         }
 
         public bool Compare( database set ) {
-            if( server_type == set.server_type && service_name == set.service_name && database_file == set.database_file && user_name == set.user_name ) {
+            if( serverType == set.serverType && serviceName == set.serviceName && databaseFile == set.databaseFile && userName == set.userName ) {
                 return true;
             } else {
                 return false;
@@ -294,7 +208,7 @@ namespace proGEDIA.utilities {
         }
 
         public override string ToString( ) {
-            return this.server_name;
+            return this.serverName;
         }
     }
 }

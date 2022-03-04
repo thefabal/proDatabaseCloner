@@ -111,7 +111,7 @@ namespace DatabaseCloner {
             cbServerName.Items.Clear();
             cbServerName.Text = "";
             foreach( proGEDIA.utilities.database item in frmMain.settings.database ) {
-                if( item.server_type == cbServerType.Text ) {
+                if( item.serverType == cbServerType.Text ) {
                     cbServerName.Items.Add( item );
                 }
             }
@@ -136,14 +136,14 @@ namespace DatabaseCloner {
         private void cbServerName_SelectedIndexChanged( object sender, EventArgs e ) {
             proGEDIA.utilities.database item = (proGEDIA.utilities.database) cbServerName.SelectedItem;
 
-            tbServerPort.Text = item.server_port;
-            tbServiceName.Text = item.service_name;
-            tbDatabaseName.Text = item.database_name;
-            tbDatabaseFile.Text = item.database_file;
-            cbAuthentication.SelectedIndex = item.authentication;
-            tbUserName.Text = item.user_name;
-            tbUserPassword.Text = item.user_pass;
-            cbRememberPassword.Checked = item.remember_password;
+            tbServerPort.Text = item.serverPort;
+            tbServiceName.Text = item.serviceName;
+            tbDatabaseName.Text = item.databaseName;
+            tbDatabaseFile.Text = item.databaseFile;
+            cbAuthentication.SelectedIndex = item.userAuth ? 0 : 1;
+            tbUserName.Text = item.userName;
+            tbUserPassword.Text = item.userPass;
+            cbRememberPassword.Checked = item.rememberPassword;
         }
 
         private void cbAuthentication_SelectedIndexChanged( object sender, EventArgs e ) {
@@ -179,7 +179,7 @@ namespace DatabaseCloner {
                     return;
             }
 
-            database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, tbDatabaseFile.Text, cbAuthentication.SelectedIndex, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
+            database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, tbDatabaseFile.Text, cbAuthentication.SelectedIndex == 0 ? false : true, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
             frmMain.settings.add( database );
 
             this.DialogResult = DialogResult.OK;
