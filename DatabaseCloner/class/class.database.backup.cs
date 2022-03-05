@@ -1,36 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
+using System.Text.RegularExpressions;
 
 using System.Data.SqlClient;
 using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 
-using System.Text.RegularExpressions;
-
 namespace DatabaseCloner {
-    public class databaseBackup {
+    public class DatabaseBackup {
         public string databaseName = string.Empty;
 
-        public List<backup_settings> backupSettings = new List<backup_settings>();
+        public List<BackupSettings> backupSettings = new List<BackupSettings>();
 
-        public event EventHandler<string> updateStatus;
+        public event EventHandler<string> UpdateStatus;
 
-        private readonly Dictionary<string, database_table> table = new Dictionary<string, database_table>();
-        private readonly Dictionary<string, database_view> view = new Dictionary<string, database_view>();
-        private readonly Dictionary<string, database_function> function = new Dictionary<string, database_function>();
-        private readonly Dictionary<string, database_trigger> trigger = new Dictionary<string, database_trigger>();
-        private readonly Dictionary<string, database_procedure> procedure = new Dictionary<string, database_procedure>();
+        private readonly Dictionary<string, DatabaseTable> table = new Dictionary<string, DatabaseTable>();
+        private readonly Dictionary<string, DatabaseView> view = new Dictionary<string, DatabaseView>();
+        private readonly Dictionary<string, DatabaseFunction> function = new Dictionary<string, DatabaseFunction>();
+        private readonly Dictionary<string, DatabaseTrigger> trigger = new Dictionary<string, DatabaseTrigger>();
+        private readonly Dictionary<string, DatabaseProcedure> procedure = new Dictionary<string, DatabaseProcedure>();
 
         private StreamWriter sw;
         private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
         private readonly proGEDIA.utilities.database db;
         private readonly int rowPerInsert;
 
-        public databaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert ) {
+        public DatabaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert ) {
             this.db = db;
             this.databaseName = databaseName;
             this.rowPerInsert = rowPerInsert;
@@ -41,13 +38,13 @@ namespace DatabaseCloner {
             }
         }
 
-        public bool getDatabase( ) {
-            updateStatus( this, "Generating Table's Schema" );
+        public bool GetDatabase( ) {
+            UpdateStatus( this, "Generating Table's Schema" );
 
-            if( getSchemaTable() && getSchemaView() && getSchemaFunction() && getSchemaTrigger() && getSchemaProcedure() ) {
+            if( GetSchemaTable() && GetSchemaView() && GetSchemaFunction() && GetSchemaTrigger() && GetSchemaProcedure() ) {
 
             } else {
-                updateStatus( this, "enableForm" );
+                UpdateStatus( this, "enableForm" );
 
                 return false;
             }
@@ -55,55 +52,60 @@ namespace DatabaseCloner {
             return true;
         }
 
-        public bool getSchema( StreamWriter sw ) {
+        public bool GetSchema( StreamWriter sw ) {
             this.sw = sw;
 
-            foreach( backup_settings bs in backupSettings ) {
+            string schema = string.Empty;
+
+            foreach( BackupSettings bs in backupSettings ) {
                 if( bs.type == "table" ) {
-                    if( bs.schema ) {
-                        if( writeSchemaTable( table[ bs.name ] ) == false ) {
+                    if( bs.backupSchema ) {
+                        if( WriteSchemaTable( table[ bs.name ], ref schema ) == false ) {
                             return false;
                         }
                     }
 
-                    if( bs.table ) {
-                        if( writeTableData( table[ bs.name ] ) == false ) {
+                    if( bs.backupData ) {
+                        if( WriteTableData( table[ bs.name ] ) == false ) {
                             return false;
                         }
                     }
 
-                    if( bs.schema ) {
-                        if( writeSchemaTableAutoIncrement( table[ bs.name ]  ) == false ) {
+                    if( bs.backupSchema ) {
+                        if( WriteSchemaTableAutoIncrement( table[ bs.name ]  ) == false ) {
                             return false;
                         }
                     }
-                } else if( bs.type == "view" && bs.schema ) {
-                    if( writeSchemaView( view[ bs.name ] ) == false ) {
+                } else if( bs.type == "view" && bs.backupSchema ) {
+                    if( WriteSchemaView( view[ bs.name ] ) == false ) {
                         return false;
                     }
-                } else if( bs.type == "function" && bs.schema ) {
-                    if( writeSchemaFunction( function[ bs.name ] ) == false ) {
+                } else if( bs.type == "function" && bs.backupSchema ) {
+                    if( WriteSchemaFunction( function[ bs.name ] ) == false ) {
                         return false;
                     }
-                } else if( bs.type == "trigger" && bs.schema ) {
-                    if( writeSchemaTrigger( trigger[ bs.name ] ) == false ) {
+                } else if( bs.type == "trigger" && bs.backupSchema ) {
+                    if( WriteSchemaTrigger( trigger[ bs.name ] ) == false ) {
                         return false;
                     }
-                } else if( bs.type == "procedure" && bs.schema ) {
-                    if( writeSchemaProcedure( procedure[ bs.name ] ) == false ) {
+                } else if( bs.type == "procedure" && bs.backupSchema ) {
+                    if( WriteSchemaProcedure( procedure[ bs.name ] ) == false ) {
                         return false;
                     }
                 }
             }
 
-            updateStatus( this, "enableForm" );
+            sw.Write( schema );
+            sw.Flush();
+
+            UpdateStatus( this, "enableForm" );
 
             return true;
         }
 
-        private bool getSchemaTable( ) {
+        private bool GetSchemaTable( ) {
             string tables = string.Empty;
-            foreach( backup_settings entry in backupSettings ) {
+            foreach( BackupSettings entry in backupSettings ) {
                 if( entry.type == "table" ) {
                     tables += ", '" + entry.name + "'";
                 }
@@ -124,8 +126,8 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
                             while( mssqlReader.Read() ) {
-                                table.Add( mssqlReader.GetString( 1 ), new database_table( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) {
-                                    is_textimage_on = ( mssqlReader.GetInt32( 2 ) == 1 ) ? ( true ) : ( false )
+                                table.Add( mssqlReader.GetString( 1 ), new DatabaseTable( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) {
+                                    isTextimageOn = ( mssqlReader.GetInt32( 2 ) == 1 ) ? ( true ) : ( false )
                                 } );
                             }
                         }
@@ -135,8 +137,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -151,11 +153,11 @@ namespace DatabaseCloner {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
                             while( mysqlReader.Read() ) {
-                                table.Add( mysqlReader.GetString( 0 ), new database_table( "", mysqlReader.GetString( 0 ) ) {
-                                    db_engine = mysqlReader.GetString( 1 ),
-                                    db_collation = mysqlReader.GetString( 2 ),
-                                    db_character_set = mysqlReader.GetString( 3 ),
-                                    auto_increment = mysqlReader.GetInt32( 4 )
+                                table.Add( mysqlReader.GetString( 0 ), new DatabaseTable( "", mysqlReader.GetString( 0 ) ) {
+                                    dbEngine = mysqlReader.GetString( 1 ),
+                                    dbCollation = mysqlReader.GetString( 2 ),
+                                    dbCharacterSet = mysqlReader.GetString( 3 ),
+                                    autoIncrement = mysqlReader.GetInt32( 4 )
                                 } );
                             }
                         }
@@ -165,8 +167,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -181,7 +183,7 @@ namespace DatabaseCloner {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         if( sqliteReader.HasRows ) {
                             while( sqliteReader.Read() ) {
-                                table.Add( sqliteReader.GetString( 0 ), new database_table( "", sqliteReader.GetString( 0 ) ) );
+                                table.Add( sqliteReader.GetString( 0 ), new DatabaseTable( "", sqliteReader.GetString( 0 ) ) );
                             }
                         }
                         sqliteReader.Close();
@@ -190,8 +192,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -199,15 +201,15 @@ namespace DatabaseCloner {
                 break;
             }
 
-            if( getSchemaTableColumn() == false || getSchemaTableConstraint() == false || getSchemaTableUniqueKey() == false || getSchemaTableForeignKey() == false ) {
+            if( GetSchemaTableColumn() == false || GetSchemaTableConstraint() == false || GetSchemaTableUniqueKey() == false || GetSchemaTableForeignKey() == false ) {
                 return false;
             }
 
             return true;
         }
 
-        private bool getSchemaTableColumn() {
-            updateStatus( this, "Generating Table's Column Info" );
+        private bool GetSchemaTableColumn() {
+            UpdateStatus( this, "Generating Table's Column Info" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -220,16 +222,16 @@ namespace DatabaseCloner {
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            table[ mssqlReader.GetString( 0 ) ].columns.Add( new database_column() {
+                            table[ mssqlReader.GetString( 0 ) ].columns.Add( new DatabaseColumn() {
                                 name = mssqlReader.GetString( 1 ),
                                 type = mssqlReader.GetString( 2 ),
-                                maxlen = ( mssqlReader.IsDBNull( 3 ) ) ? ( null ) : ( ( Int32? )mssqlReader.GetInt32( 3 ) ),
-                                is_nullable = mssqlReader.GetBoolean( 4 ),
-                                is_identity = mssqlReader.GetBoolean( 5 )
+                                maxLength = ( mssqlReader.IsDBNull( 3 ) ) ? ( null ) : ( ( Int32? )mssqlReader.GetInt32( 3 ) ),
+                                isNullable = mssqlReader.GetBoolean( 4 ),
+                                isIdentity = mssqlReader.GetBoolean( 5 )
                             } );
 
                             if( mssqlReader.GetBoolean( 5 ) ) {
-                                table[ mssqlReader.GetString( 0 ) ].is_identity = true;
+                                table[ mssqlReader.GetString( 0 ) ].isIdentity = true;
                             }
                         }
                         mssqlReader.Close();
@@ -238,8 +240,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -252,18 +254,18 @@ namespace DatabaseCloner {
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
-                            table[ mysqlReader.GetString( 0 ) ].columns.Add( new database_column() {
+                            table[ mysqlReader.GetString( 0 ) ].columns.Add( new DatabaseColumn() {
                                 name = mysqlReader.GetString( 1 ),
-                                column_default = ( mysqlReader.IsDBNull( 2 ) ) ? ( "NULL" ) : ( mysqlReader.GetString( 2 ) ),
+                                columnDefault = ( mysqlReader.IsDBNull( 2 ) ) ? ( "NULL" ) : ( mysqlReader.GetString( 2 ) ),
                                 type = mysqlReader.GetString( 4 ).Replace( " unsigned", " UNSIGNED" ),
-                                is_nullable = ( mysqlReader.GetString( 3 ) == "YES" ) ? ( true ) : ( false ),
-                                character_set = (mysqlReader.IsDBNull( 5 )) ? ("") : (mysqlReader.GetString( 5 )),
-                                collation_name = ( mysqlReader.IsDBNull( 6 ) ) ? ( "" ) : ( mysqlReader.GetString( 6 ) ),
-                                is_identity = ( mysqlReader.GetString( 7 ).ToLower() == "auto_increment" ) ? ( true ) : ( false )
+                                isNullable = ( mysqlReader.GetString( 3 ) == "YES" ) ? ( true ) : ( false ),
+                                characterSet = (mysqlReader.IsDBNull( 5 )) ? ("") : (mysqlReader.GetString( 5 )),
+                                collationName = ( mysqlReader.IsDBNull( 6 ) ) ? ( "" ) : ( mysqlReader.GetString( 6 ) ),
+                                isIdentity = ( mysqlReader.GetString( 7 ).ToLower() == "auto_increment" ) ? ( true ) : ( false )
                             } );
 
                             if( mysqlReader.GetString( 7 ).ToLower() == "auto_increment" ) {
-                                table[ mysqlReader.GetString( 0 ) ].is_identity = true;
+                                table[ mysqlReader.GetString( 0 ) ].isIdentity = true;
                             }
                         }
                         mysqlReader.Close();
@@ -272,8 +274,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -290,13 +292,13 @@ namespace DatabaseCloner {
                                 Match match = ( new Regex(@"([a-zA-Z]{1,})(\(([0-9]{1,})\))?") ).Match( sqliteReader.GetString( 2 ) );
 
                                 if( match.Success ) {
-                                    table[ key ].columns.Add( new database_column() {
+                                    table[ key ].columns.Add( new DatabaseColumn() {
                                         name = sqliteReader.GetString( 1 ),
-                                        column_default = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
+                                        columnDefault = ( sqliteReader.IsDBNull( 4 ) ) ? ( "NULL" ) : ( sqliteReader.GetString( 4 ) ),
                                         type = match.Groups[ 1 ].Value,
-                                        maxlen = ( match.Groups[ 3 ].Value.Length != 0 ) ? ( Convert.ToInt32( match.Groups[ 3 ].Value ) ) : ( 0 ),
-                                        is_nullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
-                                        is_identity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
+                                        maxLength = ( match.Groups[ 3 ].Value.Length != 0 ) ? ( Convert.ToInt32( match.Groups[ 3 ].Value ) ) : ( 0 ),
+                                        isNullable = ( sqliteReader.GetInt32( 3 ) == 0 ) ? ( true ) : ( false ),
+                                        isIdentity = ( sqliteReader.GetInt32( 5 ) == 1 ) ? ( true ) : ( false )
                                     } );
                                 }
                             }
@@ -306,8 +308,8 @@ namespace DatabaseCloner {
                             log.LogWrite( sqliteCom.CommandText );
                             log.LogWrite( ex.Message );
 
-                            updateStatus( this, "Error : " + ex.Message );
-                            updateStatus( this, "enableForm" );
+                            UpdateStatus( this, "Error : " + ex.Message );
+                            UpdateStatus( this, "enableForm" );
 
                             return false;
                         }
@@ -319,8 +321,8 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaTableConstraint() {
-            updateStatus( this, "Generating Table's Constraint Info" );
+        private bool GetSchemaTableConstraint() {
+            UpdateStatus( this, "Generating Table's Constraint Info" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -336,19 +338,19 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
                             if( pre == mssqlReader.GetString( 0 ) + "|" + mssqlReader.GetString( 1 ) ) {
-                                table[ mssqlReader.GetString( 0 ) ].constraint[ table[ mssqlReader.GetString( 0 ) ].constraint.Count - 1 ].column[ mssqlReader.GetString( 3 ) ] = mssqlReader.GetBoolean( 5 );
+                                table[ mssqlReader.GetString( 0 ) ].constraints[ table[ mssqlReader.GetString( 0 ) ].constraints.Count - 1 ].column[ mssqlReader.GetString( 3 ) ] = mssqlReader.GetBoolean( 5 );
                             } else {
-                                table[ mssqlReader.GetString( 0 ) ].constraint.Add( new database_constraint() {
+                                table[ mssqlReader.GetString( 0 ) ].constraints.Add( new DatabaseConstraint() {
                                     name = mssqlReader.GetString( 1 ),
                                     type = mssqlReader.GetString( 2 ),
                                     column = new Dictionary<string, bool>() { { mssqlReader.GetString( 3 ), mssqlReader.GetBoolean( 5 ) } },
                                     clustered = ( mssqlReader.GetByte( 4 ) == 1 ) ? ( true ) : ( false ),
-                                    is_descending_key = mssqlReader.GetBoolean( 5 ),
-                                    is_padded = mssqlReader.GetBoolean( 6 ),
-                                    statictics_norecompute = mssqlReader.GetBoolean( 7 ),
-                                    ignore_dup_key = mssqlReader.GetBoolean( 8 ),
-                                    allow_row_locks = mssqlReader.GetBoolean( 9 ),
-                                    allow_page_locks = mssqlReader.GetBoolean( 10 )
+                                    isDescendingKey = mssqlReader.GetBoolean( 5 ),
+                                    isPadded = mssqlReader.GetBoolean( 6 ),
+                                    staticticsNoreCompute = mssqlReader.GetBoolean( 7 ),
+                                    ignoreDuplicateKey = mssqlReader.GetBoolean( 8 ),
+                                    allowRowLocks = mssqlReader.GetBoolean( 9 ),
+                                    allowPageLocks = mssqlReader.GetBoolean( 10 )
                                 } );
 
                                 pre = mssqlReader.GetString( 0 ) + "|" + mssqlReader.GetString( 1 );
@@ -360,8 +362,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -377,12 +379,12 @@ namespace DatabaseCloner {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
                             if( pre == mysqlReader.GetString( 0 ) + "|" + mysqlReader.GetString( 2 ) ) {
-                                table[ mysqlReader.GetString( 0 ) ].constraint[ table[ mysqlReader.GetString( 0 ) ].constraint.Count - 1 ].column.Add( mysqlReader.GetString( 3 ), true );
+                                table[ mysqlReader.GetString( 0 ) ].constraints[ table[ mysqlReader.GetString( 0 ) ].constraints.Count - 1 ].column.Add( mysqlReader.GetString( 3 ), true );
                             } else {
-                                table[ mysqlReader.GetString( 0 ) ].constraint.Add( new database_constraint() {
+                                table[ mysqlReader.GetString( 0 ) ].constraints.Add( new DatabaseConstraint() {
                                     name = mysqlReader.GetString( 2 ),
                                     column = new Dictionary<string, bool>() { { mysqlReader.GetString( 3 ), true } },
-                                    is_unique = ( mysqlReader.GetInt32( 1 ) == 1 ) ? ( false ) : ( true )
+                                    isUnique = ( mysqlReader.GetInt32( 1 ) == 1 ) ? ( false ) : ( true )
                                 } );
 
                                 pre = mysqlReader.GetString( 0 ) + "|" + mysqlReader.GetString( 2 );
@@ -394,8 +396,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -412,7 +414,7 @@ namespace DatabaseCloner {
                             Match match = ( new Regex( @"CONSTRAINT ([^\s]{1,}) PRIMARY KEY([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 1 ) ) );
 
                             if( match.Success ) {
-                                table[ sqliteReader.GetString( 0 ) ].constraint.Add( new database_constraint() {
+                                table[ sqliteReader.GetString( 0 ) ].constraints.Add( new DatabaseConstraint() {
                                     name = match.Groups[ 1 ].Value,                                    
                                     column = new Dictionary<string, bool>() {
                                             { match.Groups[3].Value, true }
@@ -427,8 +429,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -439,8 +441,8 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaTableUniqueKey() {
-            updateStatus( this, "Generating Table's Unique Keys" );
+        private bool GetSchemaTableUniqueKey() {
+            UpdateStatus( this, "Generating Table's Unique Keys" );
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -452,20 +454,20 @@ namespace DatabaseCloner {
                         SqlDataReader sqlReader = mssqlCom.ExecuteReader();
                         while( sqlReader.Read() ) {
                             if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
-                                table[ sqlReader.GetString( 0 ) ].uniquekey[ table[ sqlReader.GetString( 0 ) ].uniquekey.Count - 1 ].column[ sqlReader.GetString( 1 ) ] = sqlReader.GetBoolean( 4 );
+                                table[ sqlReader.GetString( 0 ) ].uniqueKeys[ table[ sqlReader.GetString( 0 ) ].uniqueKeys.Count - 1 ].columns[ sqlReader.GetString( 1 ) ] = sqlReader.GetBoolean( 4 );
                             } else {
-                                table[ sqlReader.GetString( 0 ) ].uniquekey.Add( new database_uniquekey() {
+                                table[ sqlReader.GetString( 0 ) ].uniqueKeys.Add( new DatabaseUniqueKey() {
                                     name = sqlReader.GetString( 2 ),
                                     schema = sqlReader.GetString( 3 ),
                                     table = sqlReader.GetString( 0 ),
-                                    column = new Dictionary<string, bool>() { { sqlReader.GetString( 1 ), sqlReader.GetBoolean( 4 ) } },
+                                    columns = new Dictionary<string, bool>() { { sqlReader.GetString( 1 ), sqlReader.GetBoolean( 4 ) } },
                                     clustered = ( sqlReader.GetByte( 5 ) == 1 ) ? ( true ) : ( false ),
-                                    is_unique = sqlReader.GetBoolean( 6 ),
-                                    is_padded = sqlReader.GetBoolean( 7 ),
-                                    statictics_norecompute = sqlReader.GetBoolean( 8 ),
-                                    ignore_dup_key = sqlReader.GetBoolean( 9 ),
-                                    allow_row_locks = sqlReader.GetBoolean( 10 ),
-                                    allow_page_locks = sqlReader.GetBoolean( 11 )
+                                    isUnique = sqlReader.GetBoolean( 6 ),
+                                    isPadded = sqlReader.GetBoolean( 7 ),
+                                    staticticsNoreCompute = sqlReader.GetBoolean( 8 ),
+                                    ignoreDuplicateKey = sqlReader.GetBoolean( 9 ),
+                                    allowRowLocks = sqlReader.GetBoolean( 10 ),
+                                    allowPageLocks = sqlReader.GetBoolean( 11 )
                                 } );
 
                                 pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
@@ -477,8 +479,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -501,10 +503,10 @@ namespace DatabaseCloner {
                                 Match match = ( new Regex( @"CREATE INDEX([\s]{1,})([^\s]{1,})([\s]{1,})ON([\s]{1,})([^\s]{1,})([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 2 ) ) );
 
                                 if( match.Success ) {
-                                    table[ sqliteReader.GetString( 1 ) ].uniquekey.Add( new database_uniquekey() {
+                                    table[ sqliteReader.GetString( 1 ) ].uniqueKeys.Add( new DatabaseUniqueKey() {
                                         name = match.Groups[ 2 ].Value,
                                         table = match.Groups[ 5 ].Value,
-                                        column = new Dictionary<string, bool>() {
+                                        columns = new Dictionary<string, bool>() {
                                             { match.Groups[ 7 ].Value, true }
                                         }
                                     } );
@@ -518,8 +520,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -530,8 +532,8 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaTableForeignKey() {
-            updateStatus( this, "Generating Table's Unique Keys" );
+        private bool GetSchemaTableForeignKey() {
+            UpdateStatus( this, "Generating Table's Unique Keys" );
 
             if( table.Count == 0 ) {
                 return true;
@@ -548,23 +550,23 @@ namespace DatabaseCloner {
                         SqlDataReader sqlReader = mssqlCom.ExecuteReader();
                         while( sqlReader.Read() ) {
                             if( pre == sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 ) ) {
-                                if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Contains( sqlReader.GetString( 4 ) ) == false ) {
-                                    table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].column.Add( sqlReader.GetString( 4 ) );
+                                if( table[ sqlReader.GetString( 0 ) ].foreignKeys[ table[ sqlReader.GetString( 0 ) ].foreignKeys.Count - 1 ].columns.Contains( sqlReader.GetString( 4 ) ) == false ) {
+                                    table[ sqlReader.GetString( 0 ) ].foreignKeys[ table[ sqlReader.GetString( 0 ) ].foreignKeys.Count - 1 ].columns.Add( sqlReader.GetString( 4 ) );
                                 }
 
-                                if( table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Contains( sqlReader.GetString( 7 ) ) == false ) {
-                                    table[ sqlReader.GetString( 0 ) ].foreignkey[ table[ sqlReader.GetString( 0 ) ].foreignkey.Count - 1 ].rcolumn.Add( sqlReader.GetString( 7 ) );
+                                if( table[ sqlReader.GetString( 0 ) ].foreignKeys[ table[ sqlReader.GetString( 0 ) ].foreignKeys.Count - 1 ].rcolumns.Contains( sqlReader.GetString( 7 ) ) == false ) {
+                                    table[ sqlReader.GetString( 0 ) ].foreignKeys[ table[ sqlReader.GetString( 0 ) ].foreignKeys.Count - 1 ].rcolumns.Add( sqlReader.GetString( 7 ) );
                                 }
                             } else {
-                                table[ sqlReader.GetString( 0 ) ].foreignkey.Add( new database_foreignkey() {
+                                table[ sqlReader.GetString( 0 ) ].foreignKeys.Add( new DatabaseForeignkey() {
                                     name = sqlReader.GetString( 2 ),
                                     schema = sqlReader.GetString( 3 ),
-                                    column = new List<string>() { sqlReader.GetString( 4 ) },
+                                    columns = new List<string>() { sqlReader.GetString( 4 ) },
                                     pschema = sqlReader.GetString( 1 ),
                                     ptable = sqlReader.GetString( 0 ),
                                     rschema = sqlReader.GetString( 5 ),
                                     rtable = sqlReader.GetString( 6 ),
-                                    rcolumn = new List<string>() { sqlReader.GetString( 7 ) }
+                                    rcolumns = new List<string>() { sqlReader.GetString( 7 ) }
                                 } );
 
                                 pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
@@ -576,8 +578,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -604,14 +606,14 @@ namespace DatabaseCloner {
                                     fkReferences = mysqlReader.GetString( 2 );
                                     fkReferences = fkReferences.Substring( fkReferences.IndexOf( "/" ) + 1 );
 
-                                    table[ tableName ].foreignkey.Add( new database_foreignkey() {
+                                    table[ tableName ].foreignKeys.Add( new DatabaseForeignkey() {
                                         name = fkName,
-                                        column = new List<string>() { mysqlReader.GetString( 3 ) },
+                                        columns = new List<string>() { mysqlReader.GetString( 3 ) },
                                         ptable = tableName,
                                         rtable = fkReferences,
-                                        rcolumn = new List<string>() { mysqlReader.GetString( 4 ) },
-                                        on_update = mysqlReader.GetString( 5 ),
-                                        on_delete = mysqlReader.GetString( 6 )
+                                        rcolumns = new List<string>() { mysqlReader.GetString( 4 ) },
+                                        onUpdate = mysqlReader.GetString( 5 ),
+                                        onDelete = mysqlReader.GetString( 6 )
                                     } );
                                 }
                             }
@@ -635,13 +637,13 @@ namespace DatabaseCloner {
 
                             SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                             while( sqliteReader.Read() ) {
-                                table[ key ].foreignkey.Add( new database_foreignkey() {
-                                    column = new List<string>() { sqliteReader.GetString( 3 ) },
-                                    references = new database_references() {
+                                table[ key ].foreignKeys.Add( new DatabaseForeignkey() {
+                                    columns = new List<string>() { sqliteReader.GetString( 3 ) },
+                                    references = new DatabaseReferences() {
                                         table = sqliteReader.GetString( 2 ),
                                         column = sqliteReader.GetString( 4 ),
-                                        on_update = sqliteReader.GetString( 5 ),
-                                        on_delete = sqliteReader.GetString( 6 )
+                                        onUpdate = sqliteReader.GetString( 5 ),
+                                        onDelete = sqliteReader.GetString( 6 )
                                     }
                                 } );
                             }
@@ -652,8 +654,8 @@ namespace DatabaseCloner {
                             log.LogWrite( sqliteCom.CommandText );
                             log.LogWrite( ex.Message );
 
-                            updateStatus( this, "Error : " + ex.Message );
-                            updateStatus( this, "enableForm" );
+                            UpdateStatus( this, "Error : " + ex.Message );
+                            UpdateStatus( this, "enableForm" );
 
                             return false;
                         }
@@ -665,10 +667,10 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaView( ) {
+        private bool GetSchemaView( ) {
             string views = string.Empty;
-            foreach( backup_settings entry in backupSettings ) {
-                if( entry.type == "view" && entry.schema ) {
+            foreach( BackupSettings entry in backupSettings ) {
+                if( entry.type == "view" && entry.backupSchema ) {
                     views += "'" + entry.name + "', ";
                 }
             }
@@ -688,7 +690,7 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
                             while( mssqlReader.Read() ) {
-                                view.Add( mssqlReader.GetString( 0 ), new database_view() {
+                                view.Add( mssqlReader.GetString( 0 ), new DatabaseView() {
                                     name = mssqlReader.GetString( 0 ),
                                     schema = mssqlReader.GetString( 1 )
                                 } );
@@ -713,11 +715,11 @@ namespace DatabaseCloner {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
                             while( mysqlReader.Read() ) {
-                                view.Add( mysqlReader.GetString( 0 ), new database_view() {
+                                view.Add( mysqlReader.GetString( 0 ), new DatabaseView() {
                                     name = mysqlReader.GetString( 0 ),
                                     schema = mysqlReader.GetString( 1 ),
                                     definer = mysqlReader.GetString( 2 ),
-                                    security_type = mysqlReader.GetString( 3 )
+                                    securityType = mysqlReader.GetString( 3 )
                                 } );
                             }
                         }
@@ -739,7 +741,7 @@ namespace DatabaseCloner {
 
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            view.Add( sqliteReader.GetString( 0 ), new database_view() {
+                            view.Add( sqliteReader.GetString( 0 ), new DatabaseView() {
                                 name = sqliteReader.GetString( 0 ),
                                 schema = sqliteReader.GetString( 1 )
                             });
@@ -751,8 +753,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -763,10 +765,10 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaFunction( ) {
+        private bool GetSchemaFunction( ) {
             string functions = string.Empty;
-            foreach( backup_settings entry in backupSettings ) {
-                if( entry.type == "function" && entry.schema ) {
+            foreach( BackupSettings entry in backupSettings ) {
+                if( entry.type == "function" && entry.backupSchema ) {
                     functions += "'" + entry.name + "', ";
                 }
             }
@@ -786,7 +788,7 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
                             while( mssqlReader.Read() ) {
-                                function.Add( mssqlReader.GetString( 0 ), new database_function() {
+                                function.Add( mssqlReader.GetString( 0 ), new DatabaseFunction() {
                                     name = mssqlReader.GetString( 0 ),
                                     schema = mssqlReader.GetString( 1 )
                                 } );
@@ -812,17 +814,17 @@ namespace DatabaseCloner {
                         if( mysqlReader.HasRows ) {
                             while( mysqlReader.Read() ) {
                                 if( function.ContainsKey( mysqlReader.GetString( 0 ) ) == false ) {
-                                    function.Add( mysqlReader.GetString( 0 ), new database_function() {
+                                    function.Add( mysqlReader.GetString( 0 ), new DatabaseFunction() {
                                         name = mysqlReader.GetString( 0 ),
                                         returns = mysqlReader.GetString( 3 ),
                                         schema = mysqlReader.GetString( 4 ),
                                         definer = mysqlReader.GetString( 5 ),
-                                        is_deterministic = (mysqlReader.GetString( 6 ) == "YES") ?( true ):( false )
+                                        isDeterministic = (mysqlReader.GetString( 6 ) == "YES") ?( true ):( false )
                                     } );
                                 }
 
                                 if( mysqlReader.IsDBNull( 7 ) == false ) {
-                                    function[ mysqlReader.GetString( 0 ) ].param_list.Add( new param_list( mysqlReader.GetString( 7 ), mysqlReader.GetString( 8 ) ) );
+                                    function[ mysqlReader.GetString( 0 ) ].parameterList.Add( new ParameterList( mysqlReader.GetString( 7 ), mysqlReader.GetString( 8 ) ) );
                                 }                                
                             }
                         }
@@ -846,10 +848,10 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaTrigger( ) {
+        private bool GetSchemaTrigger( ) {
             string triggers = string.Empty;
-            foreach( backup_settings entry in backupSettings ) {
-                if( entry.type == "trigger" && entry.schema ) {
+            foreach( BackupSettings entry in backupSettings ) {
+                if( entry.type == "trigger" && entry.backupSchema ) {
                     triggers += "'" + entry.name + "', ";
                 }
             }
@@ -868,7 +870,7 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
                             while( mssqlReader.Read() ) {
-                                trigger.Add( mssqlReader.GetString( 0 ), new database_trigger() {
+                                trigger.Add( mssqlReader.GetString( 0 ), new DatabaseTrigger() {
                                     name = mssqlReader.GetString( 0 ),
                                     schema = mssqlReader.GetString( 1 )
                                 } );
@@ -892,13 +894,13 @@ namespace DatabaseCloner {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         if( mysqlReader.HasRows ) {
                             while( mysqlReader.Read() ) {
-                                trigger.Add( mysqlReader.GetString( 0 ), new database_trigger() {
+                                trigger.Add( mysqlReader.GetString( 0 ), new DatabaseTrigger() {
                                     name = mysqlReader.GetString( 0 ),
                                     table = mysqlReader.GetString( 1 ),
-                                    action_timing = mysqlReader.GetString( 2 ),
-                                    event_manupilation = mysqlReader.GetString( 3 ),
+                                    actionTiming = mysqlReader.GetString( 2 ),
+                                    eventManupilation = mysqlReader.GetString( 3 ),
                                     schema = mysqlReader.GetString( 4 ),
-                                    action_orientation = mysqlReader.GetString( 5 )
+                                    actionOrientation = mysqlReader.GetString( 5 )
                                 } );
                             }
                         }
@@ -920,7 +922,7 @@ namespace DatabaseCloner {
 
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            trigger.Add( sqliteReader.GetString( 0 ), new database_trigger() {
+                            trigger.Add( sqliteReader.GetString( 0 ), new DatabaseTrigger() {
                                 name = sqliteReader.GetString( 0 ),
                                 table = sqliteReader.GetString( 1 ),
                                 schema = sqliteReader.GetString( 2 )
@@ -933,8 +935,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -945,10 +947,10 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool getSchemaProcedure() {
+        private bool GetSchemaProcedure() {
             string functions = string.Empty;
-            foreach( backup_settings entry in backupSettings ) {
-                if( entry.type == "procedure" && entry.schema ) {
+            foreach( BackupSettings entry in backupSettings ) {
+                if( entry.type == "procedure" && entry.backupSchema ) {
                     functions += "'" + entry.name + "', ";
                 }
             }
@@ -968,7 +970,7 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         if( mssqlReader.HasRows ) {
                             while( mssqlReader.Read() ) {
-                                procedure.Add( mssqlReader.GetString( 0 ), new database_procedure() {
+                                procedure.Add( mssqlReader.GetString( 0 ), new DatabaseProcedure() {
                                     name = mssqlReader.GetString( 0 ),
                                     schema = mssqlReader.GetString( 1 )
                                 } );
@@ -999,44 +1001,44 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaTable( database_table entry_table ) {
+        private bool WriteSchemaTable( DatabaseTable entry_table, ref string backSchema ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    updateStatus( this, "Generating Table's Schema ([" + entry_table.schema + "][" + entry_table.name + "])" );
+                    UpdateStatus( this, "Generating Table's Schema ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
                     schema = "CREATE TABLE [" + entry_table.schema + "].[" + entry_table.name + "] (";
 
                     /**
                      * Columns
                     */
-                    foreach( database_column entry_column in entry_table.columns ) {
+                    foreach( DatabaseColumn entry_column in entry_table.columns ) {
                         schema += "\r\n\t[" + entry_column.name + "] [" + entry_column.type + "]";
-                        if( entry_column.is_identity ) {
+                        if( entry_column.isIdentity ) {
                             schema += " IDENTITY(1, 1)";
                         }
 
-                        if( entry_column.maxlen != null ) {
-                            if( entry_column.maxlen == -1 ) {
+                        if( entry_column.maxLength != null ) {
+                            if( entry_column.maxLength == -1 ) {
                                 schema += "(max)";
                             } else {
-                                schema += "(" + entry_column.maxlen + ")";
+                                schema += "(" + entry_column.maxLength + ")";
                             }
                         }
 
-                        schema += ( entry_column.is_nullable ) ? ( " NULL" ) : ( " NOT NULL" );
+                        schema += ( entry_column.isNullable ) ? ( " NULL" ) : ( " NOT NULL" );
                         schema += ",";
                     }
 
                     /**
                      * Primary and Unique Constraints
                     **/
-                    schema += writeSchemaTableConstraint( entry_table.constraint );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints );
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
 
                     schema += "\r\n) ON [PRIMARY]";
-                    if( entry_table.is_textimage_on ) {
+                    if( entry_table.isTextimageOn ) {
                         schema += " TEXTIMAGE_ON [PRIMARY]";
                     }
                     schema += ";\r\n\r\n";
@@ -1044,38 +1046,39 @@ namespace DatabaseCloner {
                     /**
                      * Unique and Foreign Keys
                     **/
-                    schema += writeSchemaTableUniqueKey( entry_table.uniquekey );
-                    schema += writeSchemaTableForeignKey( entry_table.foreignkey );
+                    schema += WriteSchemaTableUniqueKey( entry_table.uniqueKeys );
+                    
+                    backSchema += WriteSchemaTableForeignKey( entry_table.foreignKeys );
                 }
                 break;
 
                 case "mysql": {
-                    updateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
+                    UpdateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
 
                     schema = "CREATE TABLE " + entry_table.name + " (";
 
                     /**
                      * Columns
                     */
-                    foreach( database_column entry_column in entry_table.columns ) {
+                    foreach( DatabaseColumn entry_column in entry_table.columns ) {
                         schema += "\r\n\t" + entry_column.name + " " + entry_column.type + "";
 
-                        if( entry_column.character_set != "" ) {
-                            schema += " CHARACTER SET " + entry_column.character_set;
+                        if( entry_column.characterSet != "" ) {
+                            schema += " CHARACTER SET " + entry_column.characterSet;
                         }
 
-                        if( entry_column.collation_name != "" ) {
-                            schema += " COLLATE " + entry_column.collation_name;
+                        if( entry_column.collationName != "" ) {
+                            schema += " COLLATE " + entry_column.collationName;
                         }
 
-                        if( entry_column.is_nullable == false ) {
+                        if( entry_column.isNullable == false ) {
                             schema += " NOT NULL";
                         }
 
-                        if( entry_column.is_nullable == true || entry_column.column_default != "NULL" ) {
+                        if( entry_column.isNullable == true || entry_column.columnDefault != "NULL" ) {
                             schema += " DEFAULT ";
 
-                            if( entry_column.column_default == "NULL" ) {
+                            if( entry_column.columnDefault == "NULL" ) {
                                 { schema += "NULL"; }
                             } else {
                                 string type = entry_column.type.ToLower();
@@ -1103,7 +1106,7 @@ namespace DatabaseCloner {
                                     case "enum":
                                     case "date":
                                     case "datetime":
-                                    case "time": { schema += "'" + entry_column.column_default + "'"; } break;
+                                    case "time": { schema += "'" + entry_column.columnDefault + "'"; } break;
 
 
                                     case "real":
@@ -1118,9 +1121,9 @@ namespace DatabaseCloner {
                                     case "boolean":
                                     case "bit":
                                     case "timestamp":
-                                    case "year": { schema += "" + entry_column.column_default + ""; } break;
+                                    case "year": { schema += "" + entry_column.columnDefault + ""; } break;
 
-                                    default: { schema += "'#" + entry_column.column_default + "#'"; } break;
+                                    default: { schema += "'#" + entry_column.columnDefault + "#'"; } break;
                                 }
                             }
                         }
@@ -1131,29 +1134,30 @@ namespace DatabaseCloner {
                     /**
                      * Primary and Unique Constraints
                     **/
-                    schema += writeSchemaTableConstraint( entry_table.constraint );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints );
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
-                    schema += "\r\n) ENGINE=" + entry_table.db_engine + " DEFAULT CHARSET=" + entry_table.db_character_set + " COLLATE=" + entry_table.db_collation + ";\r\n\r\n";
-                    schema += writeSchemaTableForeignKey( entry_table.foreignkey );
+                    schema += "\r\n) ENGINE=" + entry_table.dbEngine + " DEFAULT CHARSET=" + entry_table.dbCharacterSet + " COLLATE=" + entry_table.dbCollation + ";\r\n\r\n";
+                    
+                    backSchema += WriteSchemaTableForeignKey( entry_table.foreignKeys );
                 }
                 break;
 
                 case "sqlite": {
-                    updateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
+                    UpdateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
 
                     schema = "CREATE TABLE " + entry_table.name + " (";
 
                     /**
                      * Columns
                     */
-                    foreach( database_column entry_column in entry_table.columns ) {
+                    foreach( DatabaseColumn entry_column in entry_table.columns ) {
                         schema += "\r\n\t" + entry_column.name + " " + entry_column.type + "";
 
-                        if( entry_column.maxlen != 0 ) {
-                            schema += "(" + entry_column.maxlen + ")";
+                        if( entry_column.maxLength != 0 ) {
+                            schema += "(" + entry_column.maxLength + ")";
                         }
 
-                        if( entry_column.is_nullable == false ) {
+                        if( entry_column.isNullable == false ) {
                             schema += " NOT NULL";
                         }
 
@@ -1165,12 +1169,7 @@ namespace DatabaseCloner {
                     /**
                      * Primary Constraints
                     **/
-                    schema += writeSchemaTableConstraint( entry_table.constraint );
-
-                    /**
-                     * Foreign Keys
-                    **/
-                    schema += writeSchemaTableForeignKey( entry_table.foreignkey );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints );
 
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n);\r\n";
@@ -1178,8 +1177,13 @@ namespace DatabaseCloner {
                     /**
                      * Unique Constraints
                     **/
-                    schema += writeSchemaTableUniqueKey( entry_table.uniquekey );
+                    schema += WriteSchemaTableUniqueKey( entry_table.uniqueKeys );
                     schema += "\r\n";
+
+                    /**
+                     * Foreign Keys
+                    **/
+                    backSchema += WriteSchemaTableForeignKey( entry_table.foreignKeys );
                 }
                 break;
             }
@@ -1190,7 +1194,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaTableAutoIncrement( database_table entry_table ) {
+        private bool WriteSchemaTableAutoIncrement( DatabaseTable entry_table ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
@@ -1200,21 +1204,21 @@ namespace DatabaseCloner {
                 break;
 
                 case "mysql": {
-                    foreach( database_column entry_column in entry_table.columns ) {
-                        if( entry_column.is_identity ) {
+                    foreach( DatabaseColumn entry_column in entry_table.columns ) {
+                        if( entry_column.isIdentity ) {
                             schema += "ALTER TABLE " + entry_table.name;
                             schema += "\r\n\tMODIFY " + entry_column.name + " " + entry_column.type + "";
 
-                            if( entry_column.collation_name != "" ) {
-                                schema += " COLLATE " + entry_column.collation_name;
+                            if( entry_column.collationName != "" ) {
+                                schema += " COLLATE " + entry_column.collationName;
                             }
 
-                            if( entry_column.is_nullable == false ) {
+                            if( entry_column.isNullable == false ) {
                                 schema += " NOT NULL";
                             }
 
-                            if( entry_column.is_identity ) {
-                                schema += " AUTO_INCREMENT, AUTO_INCREMENT = " + entry_table.auto_increment;
+                            if( entry_column.isIdentity ) {
+                                schema += " AUTO_INCREMENT, AUTO_INCREMENT = " + entry_table.autoIncrement;
                             }
 
                             schema += ";\r\n\r\n\r\n";
@@ -1237,13 +1241,13 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private string writeSchemaTableConstraint( List<database_constraint> constraint ) {
+        private string WriteSchemaTableConstraint( List<DatabaseConstraint> constraint ) {
             string schema = string.Empty;
 
             if( constraint.Count > 0 ) {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
-                        foreach( database_constraint entry_constraint in constraint ) {
+                        foreach( DatabaseConstraint entry_constraint in constraint ) {
                             schema += "\r\n\tCONSTRAINT [" + entry_constraint.name + "] ";
                             schema += ( entry_constraint.type == "PK" ) ? ( "PRIMARY KEY " ) : ( "UNIQUE " );
 
@@ -1261,18 +1265,18 @@ namespace DatabaseCloner {
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") WITH (";
-                            schema += ( entry_constraint.is_padded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
-                            schema += ( entry_constraint.statictics_norecompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
-                            schema += ( entry_constraint.ignore_dup_key ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
-                            schema += ( entry_constraint.allow_row_locks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
-                            schema += ( entry_constraint.allow_page_locks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
+                            schema += ( entry_constraint.isPadded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
+                            schema += ( entry_constraint.staticticsNoreCompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
+                            schema += ( entry_constraint.ignoreDuplicateKey ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
+                            schema += ( entry_constraint.allowRowLocks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
+                            schema += ( entry_constraint.allowPageLocks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
                             schema += ") ON[PRIMARY],";
                         }
                     }
                     break;
 
                     case "mysql": {
-                        foreach( database_constraint entry_constraint in constraint ) {
+                        foreach( DatabaseConstraint entry_constraint in constraint ) {
                             if( entry_constraint.name == "PRIMARY" ) {
                                 schema += "\r\n\tPRIMARY KEY (";
 
@@ -1283,7 +1287,7 @@ namespace DatabaseCloner {
                                 schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                                 schema += "),";
                             } else {
-                                if( entry_constraint.is_unique ) {
+                                if( entry_constraint.isUnique ) {
                                     schema += "\r\n\tUNIQUE KEY " + entry_constraint.name + " (";
                                 } else {
                                     schema += "\r\n\tKEY " + entry_constraint.name + " (";
@@ -1301,7 +1305,7 @@ namespace DatabaseCloner {
                     break;
 
                     case "sqlite": {
-                        foreach( database_constraint entry_constraint in constraint ) {
+                        foreach( DatabaseConstraint entry_constraint in constraint ) {
                             schema += "\r\n\tCONSTRAINT " + entry_constraint.name + " PRIMARY KEY (";
 
                             foreach( KeyValuePair<string, bool> entry_column in entry_constraint.column ) {
@@ -1319,15 +1323,15 @@ namespace DatabaseCloner {
             return schema;
         }
 
-        private string writeSchemaTableUniqueKey( List<database_uniquekey> uniquekey ) {
+        private string WriteSchemaTableUniqueKey( List<DatabaseUniqueKey> uniquekey ) {
             string schema = string.Empty;
 
             if( uniquekey.Count > 0 ) {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
-                        foreach( database_uniquekey entry_uniquekey in uniquekey ) {
+                        foreach( DatabaseUniqueKey entry_uniquekey in uniquekey ) {
                             schema += "\r\nCREATE ";
-                            if( entry_uniquekey.is_unique ) {
+                            if( entry_uniquekey.isUnique ) {
                                 schema += "UNIQUE ";
                             }
                             if( entry_uniquekey.clustered ) {
@@ -1336,20 +1340,20 @@ namespace DatabaseCloner {
                                 schema += "NONCLUSTERED ";
                             }
                             schema += "INDEX [" + entry_uniquekey.name + "] ON [" + entry_uniquekey.schema + "].[" + entry_uniquekey.table + "](";
-                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.column ) {
+                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.columns ) {
                                 schema += "[" + entry_column.Key + "] ";
                                 schema += ( entry_column.Value ) ? ( "DESC" ) : ( "ASC" );
                                 schema += ", ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                             schema += ")\r\n\tWITH (";
-                            schema += ( entry_uniquekey.is_padded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
-                            schema += ( entry_uniquekey.statictics_norecompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
-                            schema += ( entry_uniquekey.sort_in_tempdb ) ? ( "SORT_IN_TEMPDB = ON, " ) : ( "SORT_IN_TEMPDB = OFF, " );
-                            schema += ( entry_uniquekey.ignore_dup_key ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
-                            schema += ( entry_uniquekey.drop_existing ) ? ( "DROP_EXISTING = ON, " ) : ( "DROP_EXISTING = OFF, " );
-                            schema += ( entry_uniquekey.allow_row_locks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
-                            schema += ( entry_uniquekey.allow_page_locks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
+                            schema += ( entry_uniquekey.isPadded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
+                            schema += ( entry_uniquekey.staticticsNoreCompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
+                            schema += ( entry_uniquekey.sortInTempDB ) ? ( "SORT_IN_TEMPDB = ON, " ) : ( "SORT_IN_TEMPDB = OFF, " );
+                            schema += ( entry_uniquekey.ignoreDuplicateKey ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
+                            schema += ( entry_uniquekey.dropExisting ) ? ( "DROP_EXISTING = ON, " ) : ( "DROP_EXISTING = OFF, " );
+                            schema += ( entry_uniquekey.allowRowLocks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
+                            schema += ( entry_uniquekey.allowPageLocks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
                             schema += ") ON[PRIMARY];\r\n\r\n";
                         }
                     }
@@ -1361,9 +1365,9 @@ namespace DatabaseCloner {
                     break;
 
                     case "sqlite": {
-                        foreach( database_uniquekey entry_uniquekey in uniquekey ) {
+                        foreach( DatabaseUniqueKey entry_uniquekey in uniquekey ) {
                             schema += "\r\nCREATE INDEX " + entry_uniquekey.name + " ON " + entry_uniquekey.table + " (";
-                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.column ) {
+                            foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.columns ) {
                                 schema += entry_column.Key + ", ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
@@ -1381,21 +1385,21 @@ namespace DatabaseCloner {
             return schema;
         }
 
-        private string writeSchemaTableForeignKey( List<database_foreignkey> foreignkey ) {
+        private string WriteSchemaTableForeignKey( List<DatabaseForeignkey> foreignkey ) {
             string schema = string.Empty;
 
             if( foreignkey.Count > 0 ) {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         schema += "\r\nALTER TABLE [" + foreignkey[ 0 ].pschema + "].[" + foreignkey[ 0 ].ptable + "] ADD ";
-                        foreach( database_foreignkey entry_foreignkey in foreignkey ) {
+                        foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
                             schema += "\r\n\tCONSTRAINT [" + entry_foreignkey.name + "] FOREIGN KEY (";
-                            foreach( string column in entry_foreignkey.column ) {
+                            foreach( string column in entry_foreignkey.columns ) {
                                 schema += "[" + column + "], ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") REFERENCES [" + entry_foreignkey.rschema + "].[" + entry_foreignkey.rtable + "] (";
-                            foreach( string column in entry_foreignkey.rcolumn ) {
+                            foreach( string column in entry_foreignkey.rcolumns ) {
                                 schema += "[" + column + "], ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
@@ -1408,14 +1412,14 @@ namespace DatabaseCloner {
                     case "mysql": {
                         schema += "\r\nALTER TABLE " + foreignkey[ 0 ].ptable + "";
 
-                        foreach( database_foreignkey entry_foreignkey in foreignkey ) {
+                        foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
                             schema += "\r\n\tADD CONSTRAINT " + entry_foreignkey.name + " FOREIGN KEY (";
-                            foreach( string column in entry_foreignkey.column ) {
+                            foreach( string column in entry_foreignkey.columns ) {
                                 schema += "" + column + ", ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") REFERENCES " + entry_foreignkey.rtable + " (";
-                            foreach( string column in entry_foreignkey.rcolumn ) {
+                            foreach( string column in entry_foreignkey.rcolumns ) {
                                 schema += "" + column + ", ";
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
@@ -1427,9 +1431,9 @@ namespace DatabaseCloner {
                     break;
 
                     case "sqlite": {                       
-                        foreach( database_foreignkey entry_foreignkey in foreignkey ) {
-                            schema += "\r\n\tFOREIGN KEY (" + entry_foreignkey.column[0] + ") REFERENCES " + entry_foreignkey.references.table +  " (" + entry_foreignkey.references.column + ")";
-                            schema += "\r\n\t\tON DELETE " + entry_foreignkey.references.on_delete + " ON UPDATE " + entry_foreignkey.references.on_update + ",";
+                        foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
+                            schema += "\r\n\tFOREIGN KEY (" + entry_foreignkey.columns[0] + ") REFERENCES " + entry_foreignkey.references.table +  " (" + entry_foreignkey.references.column + ")";
+                            schema += "\r\n\t\tON DELETE " + entry_foreignkey.references.onDelete + " ON UPDATE " + entry_foreignkey.references.onUpdate + ",";
                         }
                     }
                     break;
@@ -1439,13 +1443,13 @@ namespace DatabaseCloner {
             return schema;
         }
 
-        private bool writeTableData( database_table entry_table ) {
+        private bool WriteTableData( DatabaseTable entry_table ) {
             string schema = string.Empty;
             Type[ ] tof;
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    updateStatus( this, "Generating Table's Data ([" + entry_table.schema + "][" + entry_table.name + "])" );
+                    UpdateStatus( this, "Generating Table's Data ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
                     mssqlCom.CommandText = "SELECT * FROM [" + entry_table.schema + "].[" + entry_table.name + "]";
@@ -1468,7 +1472,7 @@ namespace DatabaseCloner {
                                 tof[ i ] = mssqlReader.GetFieldType( i );
                             }
 
-                            if( entry_table.is_identity ) {
+                            if( entry_table.isIdentity ) {
                                 sw.Write( "SET IDENTITY_INSERT [" + entry_table.schema + "].[" + entry_table.name + "] ON;\r\n" );
                             }
 
@@ -1541,7 +1545,7 @@ namespace DatabaseCloner {
                                 sw.Flush();
                             }
 
-                            if( entry_table.is_identity ) {
+                            if( entry_table.isIdentity ) {
                                 sw.Write( "SET IDENTITY_INSERT [" + entry_table.schema + "].[" + entry_table.name + "] OFF;\r\n" );
                             }
 
@@ -1555,8 +1559,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mssqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -1564,7 +1568,7 @@ namespace DatabaseCloner {
                 break;
 
                 case "mysql": {
-                    updateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
+                    UpdateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
 
                     MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
                     mysqlCom.CommandText = "SELECT * FROM " + entry_table.name + "";
@@ -1651,8 +1655,8 @@ namespace DatabaseCloner {
                         log.LogWrite( mysqlCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -1660,7 +1664,7 @@ namespace DatabaseCloner {
                 break;
 
                 case "sqlite": {
-                    updateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
+                    UpdateStatus( this, "Generating Table's Data (" + entry_table.name + "]" );
 
                     SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
                     sqliteCom.CommandText = "SELECT * FROM " + entry_table.name + "";
@@ -1748,8 +1752,8 @@ namespace DatabaseCloner {
                         log.LogWrite( sqliteCom.CommandText );
                         log.LogWrite( ex.Message );
 
-                        updateStatus( this, "Error : " + ex.Message );
-                        updateStatus( this, "enableForm" );
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
 
                         return false;
                     }
@@ -1760,7 +1764,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaView( database_view entry_view ) {
+        private bool WriteSchemaView( DatabaseView entry_view ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
@@ -1770,7 +1774,7 @@ namespace DatabaseCloner {
                 break;
 
                 case "mysql": {
-                    schema = "CREATE ALGORITHM=UNDEFINED DEFINER=" + entry_view.definer + " SQL SECURITY " + entry_view.security_type + " VIEW " + entry_view.name + " AS " + entry_view.schema + ";\r\n\r\n";
+                    schema = "CREATE ALGORITHM=UNDEFINED DEFINER=" + entry_view.definer + " SQL SECURITY " + entry_view.securityType + " VIEW " + entry_view.name + " AS " + entry_view.schema + ";\r\n\r\n";
                 }
                 break;
 
@@ -1786,7 +1790,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaFunction( database_function entry_function ) {
+        private bool WriteSchemaFunction( DatabaseFunction entry_function ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
@@ -1799,8 +1803,8 @@ namespace DatabaseCloner {
                     schema += "DELIMITER $$\r\n";
                     schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(";
 
-                    if( entry_function.param_list.Count > 0 ) {
-                        foreach( param_list item in entry_function.param_list ) {
+                    if( entry_function.parameterList.Count > 0 ) {
+                        foreach( ParameterList item in entry_function.parameterList ) {
                             schema += item.name + " " + item.type + ", ";
                         }
 
@@ -1809,7 +1813,7 @@ namespace DatabaseCloner {
                     
                     schema += ") RETURNS " + entry_function.returns + "\r\n";
                     
-                    if( entry_function.is_deterministic ) {
+                    if( entry_function.isDeterministic ) {
                         schema += "\tDETERMINISTIC\r\n";
                     }
 
@@ -1830,7 +1834,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaTrigger( database_trigger entry_trigger ) {
+        private bool WriteSchemaTrigger( DatabaseTrigger entry_trigger ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
@@ -1841,8 +1845,8 @@ namespace DatabaseCloner {
 
                 case "mysql": {
                     schema += "DELIMITER $$\r\n";
-                    schema += "CREATE TRIGGER " + entry_trigger.name + " " + entry_trigger.action_timing + " " + entry_trigger.event_manupilation + " ON " + entry_trigger.table + "";
-                    schema += "\r\n\tFOR EACH " + entry_trigger.action_orientation + "";
+                    schema += "CREATE TRIGGER " + entry_trigger.name + " " + entry_trigger.actionTiming + " " + entry_trigger.eventManupilation + " ON " + entry_trigger.table + "";
+                    schema += "\r\n\tFOR EACH " + entry_trigger.actionOrientation + "";
                     schema += "\r\n" + entry_trigger.schema;
                     schema += "\r\n$$";
                     schema += "\r\nDELIMITER;\r\n\r\n";
@@ -1861,7 +1865,7 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private bool writeSchemaProcedure( database_procedure entry_procedure ) {
+        private bool WriteSchemaProcedure( DatabaseProcedure entry_procedure ) {
             string schema = string.Empty;
 
             switch( db.serverType.ToLower() ) {
@@ -1887,8 +1891,8 @@ namespace DatabaseCloner {
             return true;
         }
 
-        public List<table_entry> getListTable() {
-            List<table_entry> tableList = new List<table_entry>();
+        public List<DatabaseTableEntry> GetListTable() {
+            List<DatabaseTableEntry> tableList = new List<DatabaseTableEntry>();
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -1897,7 +1901,7 @@ namespace DatabaseCloner {
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
+                            tableList.Add( new DatabaseTableEntry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
                         }
                         mssqlReader.Close();
                     } catch( Exception ex ) {
@@ -1912,7 +1916,7 @@ namespace DatabaseCloner {
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mysqlReader.GetString( 0 ) ) );
                         }
                         mysqlReader.Close();
                     } catch( Exception ex ) {
@@ -1927,7 +1931,7 @@ namespace DatabaseCloner {
                     try {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", sqliteReader.GetString( 0 ) ) );
                         }
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
@@ -1939,8 +1943,8 @@ namespace DatabaseCloner {
             return tableList;
         }
 
-        public List<table_entry> getListView() {
-            List<table_entry> tableList = new List<table_entry>();
+        public List<DatabaseTableEntry> GetListView() {
+            List<DatabaseTableEntry> tableList = new List<DatabaseTableEntry>();
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -1949,7 +1953,7 @@ namespace DatabaseCloner {
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mssqlReader.GetString( 0 ) ) );
                         }
                         mssqlReader.Close();
                     } catch( Exception ex ) {
@@ -1964,7 +1968,7 @@ namespace DatabaseCloner {
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mysqlReader.GetString( 0 ) ) );
                         }
                         mysqlReader.Close();
                     } catch( Exception ex ) {
@@ -1979,7 +1983,7 @@ namespace DatabaseCloner {
                     try {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", sqliteReader.GetString( 0 ) ) );
                         }
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get table list.\r\n" + ex.Message );
@@ -1991,8 +1995,8 @@ namespace DatabaseCloner {
             return tableList;
         }
 
-        public List<table_entry> getListFunction() {
-            List<table_entry> tableList = new List<table_entry>();
+        public List<DatabaseTableEntry> GetListFunction() {
+            List<DatabaseTableEntry> tableList = new List<DatabaseTableEntry>();
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -2001,7 +2005,7 @@ namespace DatabaseCloner {
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            tableList.Add( new table_entry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
+                            tableList.Add( new DatabaseTableEntry( mssqlReader.GetString( 0 ), mssqlReader.GetString( 1 ) ) );
                         }
                         mssqlReader.Close();
                     } catch( Exception ex ) {
@@ -2016,7 +2020,7 @@ namespace DatabaseCloner {
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mysqlReader.GetString( 0 ) ) );
                         }
                         mysqlReader.Close();
                     } catch( Exception ex ) {
@@ -2029,8 +2033,8 @@ namespace DatabaseCloner {
             return tableList;
         }
 
-        public List<table_entry> getListTrigger() {
-            List<table_entry> tableList = new List<table_entry>();
+        public List<DatabaseTableEntry> GetListTrigger() {
+            List<DatabaseTableEntry> tableList = new List<DatabaseTableEntry>();
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -2039,7 +2043,7 @@ namespace DatabaseCloner {
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mssqlReader.GetString( 0 ) ) );
                         }
                         mssqlReader.Close();
                     } catch( Exception ex ) {
@@ -2054,7 +2058,7 @@ namespace DatabaseCloner {
                     try {
                         MySqlDataReader mysqlReader = mysqlCom.ExecuteReader();
                         while( mysqlReader.Read() ) {
-                            tableList.Add( new table_entry( "", mysqlReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", mysqlReader.GetString( 0 ) ) );
                         }
                         mysqlReader.Close();
                     } catch( Exception ex ) {
@@ -2069,7 +2073,7 @@ namespace DatabaseCloner {
                     try {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            tableList.Add( new table_entry( "", sqliteReader.GetString( 0 ) ) );
+                            tableList.Add( new DatabaseTableEntry( "", sqliteReader.GetString( 0 ) ) );
                         }
                     } catch( Exception ex ) {
                         throw new Exception( "Could not get trigger list.\r\n" + ex.Message );
@@ -2081,8 +2085,8 @@ namespace DatabaseCloner {
             return tableList;
         }
 
-        public List<table_entry> getListProcedures() {
-            List<table_entry> tableList = new List<table_entry>();
+        public List<DatabaseTableEntry> GetListProcedures() {
+            List<DatabaseTableEntry> tableList = new List<DatabaseTableEntry>();
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
@@ -2102,7 +2106,7 @@ namespace DatabaseCloner {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
                             if( msShipped.Contains( mssqlReader.GetString( 0 ) ) == false ) {
-                                tableList.Add( new table_entry( "", mssqlReader.GetString( 0 ) ) );
+                                tableList.Add( new DatabaseTableEntry( "", mssqlReader.GetString( 0 ) ) );
                             }                            
                         }
                         mssqlReader.Close();
@@ -2127,201 +2131,219 @@ namespace DatabaseCloner {
         }
     }
 
-    public class database_table {
-        public string schema { get; set; }
-        public string name { get; set; }
+    public class DatabaseTable {
+        public string schema;
+        public string name;
 
         /* MsSQL */
-        public bool is_textimage_on { get; set; }
-        public bool is_identity { get; set; }
+        public bool isTextimageOn;
+        public bool isIdentity;
 
         /* MySQL */
-        public int auto_increment { get; set; }
-        public string db_engine { get; set; }
-        public string db_collation { get; set; }
-        public string db_character_set { get; set; }
+        public int autoIncrement;
+        public string dbEngine;
+        public string dbCollation;
+        public string dbCharacterSet;
 
-        public List<database_column> columns = new List<database_column>();
-        public List<database_constraint> constraint = new List<database_constraint>();
-        public List<database_uniquekey> uniquekey = new List<database_uniquekey>();
-        public List<database_foreignkey> foreignkey = new List<database_foreignkey>();
+        public List<DatabaseColumn> columns = new List<DatabaseColumn>();
+        public List<DatabaseConstraint> constraints = new List<DatabaseConstraint>();
+        public List<DatabaseUniqueKey> uniqueKeys = new List<DatabaseUniqueKey>();
+        public List<DatabaseForeignkey> foreignKeys = new List<DatabaseForeignkey>();
 
-        public database_table( string schema, string name ) {
+        public DatabaseTable( string schema, string name ) {
             this.schema = schema;
             this.name = name;
         }
     }
 
-    public class database_column {
-        public string name { get; set; }
-        public string type { get; set; }
-        public Int32? maxlen { get; set; } = null;
-        public bool is_nullable { get; set; }
-        public bool is_identity { get; set; }
-        public string character_set { get; set; }
-        public string collation_name { get; set; }
-        public string column_default { get; set; }
+    public class DatabaseColumn {
+        public bool isNullable;
+        public bool isIdentity;
+        public Int32? maxLength;
+        public string name;
+        public string type;
+        public string characterSet;
+        public string collationName;
+        public string columnDefault;
 
-        public database_column( ) {
+        public DatabaseColumn( ) {
 
         }
 
-        public database_column( string name, string type, Int32? maxlen, bool is_nullable, bool is_identity ) {
+        public DatabaseColumn( string name, string type, Int32? maxLength, bool isNullable, bool isIdentity ) {
             this.name = name;
             this.type = type;
-            this.maxlen = maxlen;
-            this.is_nullable = is_nullable;
-            this.is_identity = is_identity;
+            this.maxLength = maxLength;
+            this.isNullable = isNullable;
+            this.isIdentity = isIdentity;
         }
     }
 
-    public class database_view {
-        public string name { get; set; }
-        public string schema { get; set; }
-        public string definer { get; set; }
-        public string security_type { get; set; }
+    public class DatabaseView {
+        public string name;
+        public string schema;
+        public string definer;
+        public string securityType;
 
-        public database_view( ) {
-
-        }
-    }
-
-    public class database_procedure {
-        public string name { get; set; }
-        public string schema { get; set; }
-
-        public database_procedure() {
+        public DatabaseView( ) {
 
         }
     }
 
-    public class database_function {
-        public string name { get; set; }
-        public List<param_list> param_list;
-        public string returns { get; set; }
-        public string schema { get; set; }
-        public string definer { get; set; }
-        public bool is_deterministic;
+    public class DatabaseProcedure {
+        public string name;
+        public string schema;
 
-        public database_function() {
-            param_list = new List<param_list>();
-        }
-    }
-
-    public class database_trigger {
-        public string name { get; set; }
-        public string table { get; set; }
-        public string action_timing { get; set; }
-        public string event_manupilation { get; set; }
-        public string schema { get; set; }
-        public string action_orientation { get; set; }
-
-        public database_trigger() {
+        public DatabaseProcedure() {
 
         }
     }
 
-    public class database_constraint {
-        public string name { get; set; }
-        public string type { get; set; }
-        public Dictionary<string, bool> column { get; set; }
-        public bool clustered { get; set; } = false;
-        public bool is_descending_key { get; set; } = false;
-        public bool is_padded { get; set; } = false;
-        public bool statictics_norecompute { get; set; } = false;
-        public bool ignore_dup_key { get; set; } = false;
-        public bool allow_row_locks { get; set; } = false;
-        public bool allow_page_locks { get; set; } = false;
-        public bool is_unique { get; set; } = false;
+    public class DatabaseFunction {
+        public bool isDeterministic;
+        public string name;
+        public string returns;
+        public string schema;
+        public string definer;
+        public List<ParameterList> parameterList = new List<ParameterList>();
 
-        public database_constraint( ) {
+        public DatabaseFunction() {
 
         }
     }
 
-    public class database_uniquekey {
-        public string name { get; set; }
-        public string schema { get; set; }
-        public string table { get; set; }
-        public Dictionary<string, bool> column { get; set; }
-        public bool clustered { get; set; } = false;
-        public bool is_unique { get; set; } = false;
-        public bool is_padded { get; set; } = false;
-        public bool statictics_norecompute { get; set; } = false;
-        public bool sort_in_tempdb { get; set; } = false;
-        public bool ignore_dup_key { get; set; } = false;
-        public bool drop_existing { get; set; } = false;
-        public bool online { get; set; } = false;
-        public bool allow_row_locks { get; set; } = false;
-        public bool allow_page_locks { get; set; } = false;
+    public class DatabaseTrigger {
+        public string name;
+        public string table;
+        public string actionTiming;
+        public string eventManupilation;
+        public string schema;
+        public string actionOrientation;
 
-        public database_uniquekey( ) {
+        public DatabaseTrigger() {
 
         }
     }
 
-    public class database_foreignkey {
-        public string name { get; set; }
-        public string schema { get; set; }
-        public List<string> column { get; set; }
-        public string pschema { get; set; }
-        public string ptable { get; set; }
-        public string rschema { get; set; }
-        public string rtable { get; set; }
-        public List<string> rcolumn { get; set; }
-        public string on_update { get; set; }
-        public string on_delete { get; set; }
+    public class DatabaseConstraint {
+        public string name;
+        public string type;
+        public Dictionary<string, bool> column;
+        public bool allowPageLocks;
+        public bool allowRowLocks;
+        public bool clustered;
+        public bool ignoreDuplicateKey;
+        public bool isDescendingKey;
+        public bool isPadded;
+        public bool isUnique;
+        public bool staticticsNoreCompute;
+
+        public DatabaseConstraint( ) {
+            clustered = false;
+            isDescendingKey = false;
+            isPadded = false;
+            staticticsNoreCompute = false;
+            ignoreDuplicateKey = false;
+            allowRowLocks = false;
+            allowPageLocks = false;
+            isUnique = false;
+        }
+    }
+
+    public class DatabaseUniqueKey {
+        public string name;
+        public string schema;
+        public string table;
+        public bool allowPageLocks;
+        public bool allowRowLocks;
+        public bool clustered;
+        public bool dropExisting;
+        public bool ignoreDuplicateKey;
+        public bool isPadded;
+        public bool isUnique;
+        public bool staticticsNoreCompute;
+        public bool sortInTempDB;
+        public bool online;
+
+        public Dictionary<string, bool> columns;
+
+        public DatabaseUniqueKey( ) {
+            allowPageLocks = false;
+            allowRowLocks = false;
+            clustered = false;
+            dropExisting = false;
+            ignoreDuplicateKey = false;
+            isUnique = false;
+            isPadded = false;
+            online = false;
+            staticticsNoreCompute = false;
+            sortInTempDB = false;
+        }
+    }
+
+    public class DatabaseForeignkey {
+        public string name;
+        public string schema;
+        public string pschema;
+        public string ptable;
+        public string rschema;
+        public string rtable;
+        public string onUpdate;
+        public string onDelete;
+
+        public List<string> columns;
+        public List<string> rcolumns;
 
         /**
          * SQLite
          **/
-        public database_references references { get; set; }
+        public DatabaseReferences references;
 
-        public database_foreignkey( ) {
+        public DatabaseForeignkey( ) {
 
         }
     }
 
-    public class database_references {
-        public string table { get; set; }
-        public string column { get; set; }
-        public string on_update { get; set; }
-        public string on_delete { get; set; }
+    public class DatabaseReferences {
+        public string table;
+        public string column;
+        public string onUpdate;
+        public string onDelete;
     }
 
-    public class table_entry {
-        public string schema { get; set; } = "";
-        public string name { get; set; } = "";
+    public class DatabaseTableEntry {
+        public string schema;
+        public string name;
 
-        public table_entry( string schema, string name) {
+        public DatabaseTableEntry( string schema, string name) {
             this.schema = schema;
             this.name = name;
         }
     }
 
-    public class param_list {
+    public class ParameterList {
         public string name;
         public string type;
 
-        public param_list( string name, string type ) {
+        public ParameterList( string name, string type ) {
             this.name = name;
             this.type = type;
         }
     }
 
-    public class backup_settings {
-        public string type { get; set; }
-        public string schema_name { get; set; }
-        public string name { get; set; }
-        public bool schema { get; set; } = true;
-        public bool table { get; set; } = true;
+    public class BackupSettings {
+        public bool backupData;
+        public bool backupSchema;
+        public string name;
+        public string schemaName;
+        public string type;
 
-        public backup_settings( string type, string schema_name, string name, Boolean schema, Boolean table ) {
-            this.type = type;
-            this.schema_name = schema_name;
+        public BackupSettings( string type, string schemaName, string name, bool backupSchema, bool backupData ) {
             this.name = name;
-            this.schema = ( schema == true ) ? ( true ) : ( false );
-            this.table = ( table == true ) ? ( true ) : ( false );
+            this.schemaName = schemaName;
+            this.type = type;
+            this.backupData = backupData;
+            this.backupSchema = backupSchema;
         }
     }
 }

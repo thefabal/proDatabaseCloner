@@ -12,12 +12,12 @@ using MySql.Data.MySqlClient;
 
 namespace DatabaseCloner {
     public partial class frmDataSelector: Form {
-        public databaseBackup backup_settings;
+        public DatabaseBackup backup_settings;
 
         private readonly proGEDIA.utilities.database database;
         private readonly string db_name;
 
-        public frmDataSelector( proGEDIA.utilities.database database, string db_name, ref databaseBackup backup_settings ) {
+        public frmDataSelector( proGEDIA.utilities.database database, string db_name, ref DatabaseBackup backup_settings ) {
             this.database = database;
             this.db_name = db_name;
             this.backup_settings = backup_settings;
@@ -38,8 +38,8 @@ namespace DatabaseCloner {
              * Tables
             **/
             try {
-                List<table_entry> tableList = backup_settings.getListTable();
-                foreach( table_entry tn in tableList ) {
+                List<DatabaseTableEntry> tableList = backup_settings.GetListTable();
+                foreach( DatabaseTableEntry tn in tableList ) {
                     dgvTableList.Rows.Add( "table", tn.schema, tn.name, true, true );
                 }
             } catch( Exception ex ) {
@@ -50,8 +50,8 @@ namespace DatabaseCloner {
               * Views
              **/
             try {
-                List<table_entry> tableList = backup_settings.getListView();
-                foreach( table_entry tn in tableList ) {
+                List<DatabaseTableEntry> tableList = backup_settings.GetListView();
+                foreach( DatabaseTableEntry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "view", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
             } catch( Exception ex ) {
@@ -62,8 +62,8 @@ namespace DatabaseCloner {
              * Functions
             **/
             try {
-                List<table_entry> tableList = backup_settings.getListFunction();
-                foreach( table_entry tn in tableList ) {
+                List<DatabaseTableEntry> tableList = backup_settings.GetListFunction();
+                foreach( DatabaseTableEntry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "function", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
             } catch( Exception ex ) {
@@ -74,8 +74,8 @@ namespace DatabaseCloner {
              * Stored Procedures
             **/
             try {
-                List<table_entry> tableList = backup_settings.getListProcedures();
-                foreach( table_entry tn in tableList ) {
+                List<DatabaseTableEntry> tableList = backup_settings.GetListProcedures();
+                foreach( DatabaseTableEntry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "procedure", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
             } catch( Exception ex ) {
@@ -86,8 +86,8 @@ namespace DatabaseCloner {
              * Database Triggers
             **/
             try {
-                List<table_entry> tableList = backup_settings.getListTrigger();
-                foreach( table_entry tn in tableList ) {
+                List<DatabaseTableEntry> tableList = backup_settings.GetListTrigger();
+                foreach( DatabaseTableEntry tn in tableList ) {
                     dgvTableList.Rows[ dgvTableList.Rows.Add( "trigger", tn.schema, tn.name, true, false ) ].Cells[ 4 ].ReadOnly = true;
                 }
             } catch( Exception ex ) {
@@ -140,7 +140,7 @@ namespace DatabaseCloner {
 
             foreach( DataGridViewRow row in dgvTableList.Rows ) {
                 backup_settings.backupSettings.Add( 
-                    new backup_settings( 
+                    new BackupSettings( 
                         row.Cells[ 0 ].Value.ToString(), 
                         row.Cells[ 1 ].Value.ToString(), 
                         row.Cells[ 2 ].Value.ToString(),

@@ -19,7 +19,7 @@ namespace DatabaseCloner {
     public partial class frmMain: Form {
         public frmSettings frmSettings;
 
-        public databaseBackup backup;
+        public DatabaseBackup backup;
         public settings settings = new settings();
         public proGEDIA.utilities.database db_source = new proGEDIA.utilities.database();
         public proGEDIA.utilities.database db_destination = new proGEDIA.utilities.database();
@@ -143,8 +143,8 @@ namespace DatabaseCloner {
 
         private void btnSelectData_Click( object sender, EventArgs e ) {
             if( tbConnectionSource.Text.Length > 0 && cbDatabaseSource.SelectedIndex != -1 ) {
-                backup = new databaseBackup( db_source, cbDatabaseSource.SelectedItem.ToString(), settings.row_per_insert );
-                backup.updateStatus += new EventHandler<string>( updateStatus );
+                backup = new DatabaseBackup( db_source, cbDatabaseSource.SelectedItem.ToString(), settings.row_per_insert );
+                backup.UpdateStatus += new EventHandler<string>( updateStatus );
 
                 frmDataSelector frmDataSelector = new frmDataSelector( db_source, cbDatabaseSource.SelectedItem.ToString(), ref backup );
 
@@ -159,10 +159,10 @@ namespace DatabaseCloner {
                     if( sfd.ShowDialog() == DialogResult.OK ) {
                         disableForm();
 
-                        if( backup.getDatabase() ) {
+                        if( backup.GetDatabase() ) {
                             StreamWriter sw = File.CreateText( sfd.FileName );
 #if DEBUG
-                            backup.getSchema( sw );
+                            backup.GetSchema( sw );
 #else
                             new Thread( () => { backup.getSchema( sw ); } ).Start();
 #endif
