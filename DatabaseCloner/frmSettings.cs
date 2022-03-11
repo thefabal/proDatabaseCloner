@@ -21,11 +21,12 @@ namespace DatabaseCloner
         }
 
         private void frmSettings_Load( object sender, EventArgs e ) {
-            nudRowPerInsert.Value = frmMain.settings.row_per_insert;
+            nudRowPerInsert.Value = frmMain.settings.rowPerInsert;
         }
 
         private void btnOK_Click( object sender, EventArgs e ) {
-            frmMain.settings.row_per_insert = Convert.ToInt32( nudRowPerInsert.Value );
+            frmMain.settings.rowPerInsert = Convert.ToInt32( nudRowPerInsert.Value );
+            frmMain.settings.insertColumnName = rbColumnNamesYes.Checked;
 
             this.DialogResult = DialogResult.OK;
         }

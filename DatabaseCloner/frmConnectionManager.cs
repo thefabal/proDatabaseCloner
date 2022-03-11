@@ -180,13 +180,13 @@ namespace DatabaseCloner {
             }
 
             database.Set( cbServerType.Text, cbServerName.Text, tbServerPort.Text, tbServiceName.Text, tbDatabaseName.Text, tbDatabaseFile.Text, cbAuthentication.SelectedIndex == 0 ? false : true, tbUserName.Text, tbUserPassword.Text, cbRememberPassword.Checked );
-            frmMain.settings.add( database );
+            frmMain.settings.Add( database );
 
             this.DialogResult = DialogResult.OK;
         }
 
         private void btnDelete_Click( object sender, EventArgs e ) {
-            frmMain.settings.remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
+            frmMain.settings.Remove( cbServerType.Text, cbServerName.Text, tbDatabaseFile.Text, tbUserName.Text );
         }
 
         private void btnBrowse_Click( object sender, EventArgs e ) {

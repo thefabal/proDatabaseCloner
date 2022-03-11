@@ -26,11 +26,13 @@ namespace DatabaseCloner {
         private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
         private readonly proGEDIA.utilities.database db;
         private readonly int rowPerInsert;
+        private readonly bool insertColumnNames = false;
 
-        public DatabaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert ) {
+        public DatabaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert, bool insertColumnNames ) {
             this.db = db;
             this.databaseName = databaseName;
             this.rowPerInsert = rowPerInsert;
+            this.insertColumnNames = insertColumnNames;
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": { db.mssqlCon.ChangeDatabase( databaseName ); } break;
@@ -1479,7 +1481,11 @@ namespace DatabaseCloner {
                             int j = 0;
                             do {
                                 if( j % rowPerInsert == 0 ) {
-                                    schema = "INSERT INTO [" + entry_table.schema + "].[" + entry_table.name + "] (" + columns + ") VALUES\r\n";
+                                    schema = "INSERT INTO [" + entry_table.schema + "].[" + entry_table.name + "]";
+                                    if( insertColumnNames ) {
+                                        schema += " (" + columns + ")";
+                                    }
+                                    schema += " VALUES\r\n";
                                 }
 
                                 schema += "\t(";

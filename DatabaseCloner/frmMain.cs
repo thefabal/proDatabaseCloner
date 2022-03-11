@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
 using System.IO;
-using System.Threading;
 
 using System.Data.SqlClient;
 using System.Data.SQLite;
@@ -20,7 +15,7 @@ namespace DatabaseCloner {
         public frmSettings frmSettings;
 
         public DatabaseBackup backup;
-        public settings settings = new settings();
+        public Settings settings = new Settings();
         public proGEDIA.utilities.database db_source = new proGEDIA.utilities.database();
         public proGEDIA.utilities.database db_destination = new proGEDIA.utilities.database();
         public proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
@@ -32,11 +27,11 @@ namespace DatabaseCloner {
         }
 
         private void frmMain_Load( object sender, EventArgs e ) {
-            settings.get();
+            settings.Get();
         }
 
         private void frmMain_FormClosing( object sender, FormClosingEventArgs e ) {
-            settings.save();
+            settings.Save();
         }
 
         private void btnGenerateSource_Click( object sender, EventArgs e ) {
@@ -143,8 +138,8 @@ namespace DatabaseCloner {
 
         private void btnSelectData_Click( object sender, EventArgs e ) {
             if( tbConnectionSource.Text.Length > 0 && cbDatabaseSource.SelectedIndex != -1 ) {
-                backup = new DatabaseBackup( db_source, cbDatabaseSource.SelectedItem.ToString(), settings.row_per_insert );
-                backup.UpdateStatus += new EventHandler<string>( updateStatus );
+                backup = new DatabaseBackup( db_source, cbDatabaseSource.SelectedItem.ToString(), settings.rowPerInsert, settings.insertColumnName );
+                backup.UpdateStatus += new EventHandler<string>( UpdateStatus );
 
                 frmDataSelector frmDataSelector = new frmDataSelector( db_source, cbDatabaseSource.SelectedItem.ToString(), ref backup );
 
@@ -157,7 +152,7 @@ namespace DatabaseCloner {
                     };
 
                     if( sfd.ShowDialog() == DialogResult.OK ) {
-                        disableForm();
+                        DisableForm();
 
                         if( backup.GetDatabase() ) {
                             StreamWriter sw = File.CreateText( sfd.FileName );
@@ -172,9 +167,9 @@ namespace DatabaseCloner {
             }
         }
 
-        public void disableForm() {
+        public void DisableForm() {
             if( btnSelectData.InvokeRequired ) {
-                btnSelectData.BeginInvoke( (MethodInvoker)delegate () { disableForm(); } );
+                btnSelectData.BeginInvoke( (MethodInvoker)delegate () { DisableForm(); } );
             } else {
                 btnGenerateSource.Enabled = false;
                 btnGenerateDestination.Enabled = false;
@@ -184,9 +179,9 @@ namespace DatabaseCloner {
             }
         }
 
-        public void enableForm() {
+        public void EnableForm() {
             if( btnSelectData.InvokeRequired ) {
-                btnSelectData.BeginInvoke( (MethodInvoker)delegate () { enableForm(); } );
+                btnSelectData.BeginInvoke( (MethodInvoker)delegate () { EnableForm(); } );
             } else {
                 MessageBox.Show( "All is done.\r\n\r\nThank you for using proGEDIA Database Cloner.\r\nWe hope you like it. Feel free to share it." );
 
@@ -198,15 +193,15 @@ namespace DatabaseCloner {
             }
         }
 
-        public void updateStatus( object s, string message ) {
+        public void UpdateStatus( object s, string message ) {
             if( message == "enableForm" ) {
-                enableForm();
+                EnableForm();
 
                 return;
             }
 
             if( statusStrip1.InvokeRequired ) {
-                statusStrip1.BeginInvoke( (MethodInvoker)delegate () { updateStatus( s, message ); } );
+                statusStrip1.BeginInvoke( (MethodInvoker)delegate () { UpdateStatus( s, message ); } );
             } else {
                 slInfo.Text = message;
             }
@@ -217,15 +212,18 @@ namespace DatabaseCloner {
         }
     }
 
-    public class settings {
-        public int row_per_insert = 1;
+    public class Settings {
+        public int rowPerInsert = 1;
+
+        public bool insertColumnName = true;
+
         public List<proGEDIA.utilities.database> database = new List<proGEDIA.utilities.database>();
 
-        public settings() {
+        public Settings() {
 
         }
 
-        public void add( proGEDIA.utilities.database set ) {
+        public void Add( proGEDIA.utilities.database set ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
                 if( item.value.serverType == set.serverType && item.value.serverName == set.serverName && item.value.serverPort == set.serverPort ) {
                     database.RemoveAt( item.i );
@@ -237,7 +235,7 @@ namespace DatabaseCloner {
             database.Add( set );
         }
 
-        public void remove( string server_type, string server_name, string database_file, string user_name ) {
+        public void Remove( string server_type, string server_name, string database_file, string user_name ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
                 if( item.value.Compare( server_type, server_name, database_file, user_name ) ) {
                     database.RemoveAt( item.i );
@@ -247,7 +245,7 @@ namespace DatabaseCloner {
             }
         }
 
-        public void get() {
+        public void Get() {
             string database_setting = Properties.Settings.Default.database_setting.ToString();
             if( database_setting.Length > 0 ) {
                 database_setting = proGEDIA.utilities.encryption.DecryptPassword( database_setting );
@@ -260,10 +258,11 @@ namespace DatabaseCloner {
                 }
             }
 
-            row_per_insert = Properties.Settings.Default.row_per_insert;
+            rowPerInsert = Properties.Settings.Default.rowPerInsert;
+            insertColumnName = Properties.Settings.Default.insertColumnName;
         }
 
-        public void save() {
+        public void Save() {
             for( int i = 0; i < database.Count; i++ ) {
                 if( database[ i ].rememberPassword == false ) {
                     database[ i ].userPass = string.Empty;
@@ -283,10 +282,10 @@ namespace DatabaseCloner {
             }
 
             JavaScriptSerializer serializer = new JavaScriptSerializer();
-            string settings = serializer.Serialize( this.database );
+            string settings = serializer.Serialize( database );
 
             Properties.Settings.Default.database_setting = proGEDIA.utilities.encryption.EncryptPassword( settings );
-            Properties.Settings.Default.row_per_insert = row_per_insert;
+            Properties.Settings.Default.rowPerInsert = rowPerInsert;
             Properties.Settings.Default.Save();
         }
     }
