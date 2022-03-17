@@ -161,7 +161,7 @@ namespace proGEDIA.utilities {
             this.rememberPassword = rememberPassword;
         }
 
-        public string getConnectionString( ) {
+        public string GetConnectionString( ) {
             string connectionString = string.Empty;
             switch( serverType.ToLower() ) {
                 case "mssql":

@@ -22,6 +22,11 @@ namespace DatabaseCloner
 
         private void frmSettings_Load( object sender, EventArgs e ) {
             nudRowPerInsert.Value = frmMain.settings.rowPerInsert;
+            if( frmMain.settings.insertColumnName ) {
+                rbColumnNamesYes.Checked = true;
+            } else {
+                rbColumnNamesNo.Checked = true;
+            }
         }
 
         private void btnOK_Click( object sender, EventArgs e ) {

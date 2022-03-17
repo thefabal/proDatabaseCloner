@@ -37,7 +37,7 @@ namespace DatabaseCloner {
         private void btnGenerateSource_Click( object sender, EventArgs e ) {
             frmConnectionManager manager = new frmConnectionManager(this, ref db_source );
             if( manager.ShowDialog() == DialogResult.OK ) {
-                tbConnectionSource.Text = db_source.getConnectionString();
+                tbConnectionSource.Text = db_source.GetConnectionString();
 
                 loadDatabases( db_source, cbDatabaseSource );
             }
@@ -54,7 +54,7 @@ namespace DatabaseCloner {
                     if( db_source.mssqlCon == null )
                         db_source.mssqlCon = new SqlConnection();
 
-                    db_source.mssqlCon.ConnectionString = db.getConnectionString();
+                    db_source.mssqlCon.ConnectionString = db.GetConnectionString();
                     try {
                         db_source.mssqlCon.Open();
                     } catch( Exception ex ) {
@@ -84,7 +84,7 @@ namespace DatabaseCloner {
                     if( db_source.mysqlCon == null )
                         db_source.mysqlCon = new MySqlConnection();
 
-                    db_source.mysqlCon.ConnectionString = db.getConnectionString();
+                    db_source.mysqlCon.ConnectionString = db.GetConnectionString();
                     try {
                         db_source.mysqlCon.Open();
                     } catch( Exception ex ) {
@@ -114,7 +114,7 @@ namespace DatabaseCloner {
                     if( db_source.sqliteCon == null )
                         db_source.sqliteCon = new SQLiteConnection();
 
-                    db_source.sqliteCon.ConnectionString = db.getConnectionString();
+                    db_source.sqliteCon.ConnectionString = db.GetConnectionString();
                     try {
                         db_source.sqliteCon.Open();
                     } catch( Exception ex ) {
@@ -132,7 +132,7 @@ namespace DatabaseCloner {
         private void btnGenerateDestination_Click( object sender, EventArgs e ) {
             frmConnectionManager manager = new frmConnectionManager(this, ref db_destination );
             if( manager.ShowDialog() == DialogResult.OK ) {
-                tbConnectionDestination.Text = db_destination.getConnectionString();
+                tbConnectionDestination.Text = db_destination.GetConnectionString();
             }
         }
 
@@ -286,6 +286,8 @@ namespace DatabaseCloner {
 
             Properties.Settings.Default.database_setting = proGEDIA.utilities.encryption.EncryptPassword( settings );
             Properties.Settings.Default.rowPerInsert = rowPerInsert;
+            Properties.Settings.Default.insertColumnName = insertColumnName;
+
             Properties.Settings.Default.Save();
         }
     }

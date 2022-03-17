@@ -54,10 +54,82 @@ namespace DatabaseCloner {
             return true;
         }
 
+        public string GetDatabaseInfo() {
+            string dbInfo = string.Empty;
+
+            switch( db.serverType.ToLower() ) {
+                case "mssql": {
+                    SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
+                    mssqlCom.CommandText = "SELECT @@VERSION";
+
+                    try {
+                        dbInfo = (mssqlCom.ExecuteScalar()).ToString().Replace("\n","\r\n-- ");
+                    } catch( Exception ex ) {
+                        log.LogWrite( "GetDatabaseInfo" );
+                        log.LogWrite( mssqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
+                    }
+                }
+                break;
+
+                case "mysql": {
+                    MySqlCommand mysqlCom = db.mysqlCon.CreateCommand();
+                    mysqlCom.CommandText = "SELECT VERSION()";
+
+                    try {
+                        dbInfo = (mysqlCom.ExecuteScalar()).ToString();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "GetDatabaseInfo" );
+                        log.LogWrite( mysqlCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
+                    }
+                }
+                break;
+
+                case "sqlite": {
+                    SQLiteCommand sqliteCom = db.sqliteCon.CreateCommand();
+                    sqliteCom.CommandText = "SELECT sqlite_version()";
+
+                    try {
+                        dbInfo = (sqliteCom.ExecuteScalar()).ToString();
+                    } catch( Exception ex ) {
+                        log.LogWrite( "GetDatabaseInfo" );
+                        log.LogWrite( sqliteCom.CommandText );
+                        log.LogWrite( ex.Message );
+
+                        UpdateStatus( this, "Error : " + ex.Message );
+                        UpdateStatus( this, "enableForm" );
+                    }
+                }
+                break;
+            }
+
+            return dbInfo;
+        }
+
         public bool GetSchema( StreamWriter sw ) {
             this.sw = sw;
 
             string schema = string.Empty;
+            schema += "-- proGEDIA Database Cloner SQL Dump\r\n"
+                + "-- version 0.9.0\r\n"
+                + "-- https://www.progedia.com/\r\n"
+                + "--\r\n"
+                + "-- Database        : " + db.serverType + "\r\n"
+                + "-- Host            : " + db.serverName + ":" + db.serverPort + "\r\n"
+                + "-- Generation Time : " + DateTime.Now.ToString( "yyyy.MM.dd HH:mm:ss") + "\r\n"
+                + "-- Server version  : " + GetDatabaseInfo() + "\r\n\r\n";
+
+            sw.Write( schema );
+            sw.Flush();
+
+            schema = string.Empty;
 
             foreach( BackupSettings bs in backupSettings ) {
                 if( bs.type == "table" ) {
@@ -220,7 +292,7 @@ namespace DatabaseCloner {
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id WHERE ta.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY ta.name, c.column_id";
+                    mssqlCom.CommandText = "SELECT ta.name, c.name, t.name, COLUMNPROPERTY(c.object_id, c.name, 'charmaxlen') AS max_length, c.is_nullable, c.is_identity, ic.last_value FROM sys.columns AS c INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id INNER JOIN sys.tables AS ta ON c.object_id = ta.object_id LEFT JOIN sys.identity_columns AS ic ON c.object_id = ic.object_id WHERE ta.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY ta.name, c.column_id";
                     try {
                         SqlDataReader mssqlReader = mssqlCom.ExecuteReader();
                         while( mssqlReader.Read() ) {
@@ -234,6 +306,7 @@ namespace DatabaseCloner {
 
                             if( mssqlReader.GetBoolean( 5 ) ) {
                                 table[ mssqlReader.GetString( 0 ) ].isIdentity = true;
+                                table[ mssqlReader.GetString( 0 ) ].autoIncrement = mssqlReader.GetInt32( 6 );
                             }
                         }
                         mssqlReader.Close();
@@ -449,7 +522,7 @@ namespace DatabaseCloner {
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
                     SqlCommand mssqlCom = db.mssqlCon.CreateCommand();
-                    mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, i.name";
+                    mssqlCom.CommandText = "SELECT t.name, c.name AS column_name, i.name, s.name, ic.is_descending_key, i.type, i.is_unique, i.is_padded, st.no_recompute, i.ignore_dup_key, i.allow_row_locks, i.allow_page_locks, i.is_disabled, i.optimize_for_sequential_key FROM sys.indexes AS i INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id INNER JOIN sys.tables AS t ON i.object_id = t.object_id INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id INNER JOIN sys.columns AS c ON ic.column_id = c.column_id AND t.object_id = c.object_id INNER JOIN sys.stats AS st ON i.object_id = st.object_id AND i.index_id = st.stats_id WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND t.name IN('" + string.Join( "', '", table.Keys.ToArray() ) + "') ORDER BY t.name, i.name";
                     try {
                         string pre = string.Empty;
 
@@ -469,7 +542,9 @@ namespace DatabaseCloner {
                                     staticticsNoreCompute = sqlReader.GetBoolean( 8 ),
                                     ignoreDuplicateKey = sqlReader.GetBoolean( 9 ),
                                     allowRowLocks = sqlReader.GetBoolean( 10 ),
-                                    allowPageLocks = sqlReader.GetBoolean( 11 )
+                                    allowPageLocks = sqlReader.GetBoolean( 11 ),
+                                    online = sqlReader.GetBoolean( 12 ),
+                                    optimize_for_sequential_key = sqlReader.GetBoolean( 13 )
                                 } );
 
                                 pre = sqlReader.GetString( 0 ) + "|" + sqlReader.GetString( 2 );
@@ -1010,7 +1085,10 @@ namespace DatabaseCloner {
                 case "mssql": {
                     UpdateStatus( this, "Generating Table's Schema ([" + entry_table.schema + "][" + entry_table.name + "])" );
 
-                    schema = "CREATE TABLE [" + entry_table.schema + "].[" + entry_table.name + "] (";
+                    schema = "--\r\n"
+                        + "-- Structure for table '" + entry_table.schema + "." + entry_table.name + "'\r\n"
+                        + "--\r\n\r\n";
+                    schema += "CREATE TABLE [" + entry_table.schema + "].[" + entry_table.name + "] (";
 
                     /**
                      * Columns
@@ -1036,7 +1114,7 @@ namespace DatabaseCloner {
                     /**
                      * Primary and Unique Constraints
                     **/
-                    schema += WriteSchemaTableConstraint( entry_table.constraints );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
 
                     schema += "\r\n) ON [PRIMARY]";
@@ -1057,7 +1135,10 @@ namespace DatabaseCloner {
                 case "mysql": {
                     UpdateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
 
-                    schema = "CREATE TABLE " + entry_table.name + " (";
+                    schema = "--\r\n"
+                        + "-- Structure for table '" + entry_table.name + "'\r\n"
+                        + "--\r\n\r\n";
+                    schema += "CREATE TABLE " + entry_table.name + " (";
 
                     /**
                      * Columns
@@ -1136,7 +1217,7 @@ namespace DatabaseCloner {
                     /**
                      * Primary and Unique Constraints
                     **/
-                    schema += WriteSchemaTableConstraint( entry_table.constraints );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n) ENGINE=" + entry_table.dbEngine + " DEFAULT CHARSET=" + entry_table.dbCharacterSet + " COLLATE=" + entry_table.dbCollation + ";\r\n\r\n";
                     
@@ -1147,7 +1228,10 @@ namespace DatabaseCloner {
                 case "sqlite": {
                     UpdateStatus( this, "Generating Table's Schema (" + entry_table.name + ")" );
 
-                    schema = "CREATE TABLE " + entry_table.name + " (";
+                    schema = "--\r\n"
+                        + "-- Structure for table '" + entry_table.name + "'\r\n"
+                        + "--\r\n\r\n";
+                    schema += "CREATE TABLE " + entry_table.name + " (";
 
                     /**
                      * Columns
@@ -1171,7 +1255,7 @@ namespace DatabaseCloner {
                     /**
                      * Primary Constraints
                     **/
-                    schema += WriteSchemaTableConstraint( entry_table.constraints );
+                    schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
 
                     schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n);\r\n";
@@ -1201,11 +1285,19 @@ namespace DatabaseCloner {
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    
+                    schema += "--\r\n"
+                        + "-- Auto increment for table '" + entry_table.name + "'\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += "DBCC CHECKIDENT ('" + entry_table.name + "', RESEED, " + entry_table.autoIncrement + ")\r\n\r\n\r\n";
                 }
                 break;
 
                 case "mysql": {
+                    schema += "--\r\n"
+                        + "-- Auto increment for table '" + entry_table.name + "'\r\n"
+                        + "--\r\n\r\n";
+
                     foreach( DatabaseColumn entry_column in entry_table.columns ) {
                         if( entry_column.isIdentity ) {
                             schema += "ALTER TABLE " + entry_table.name;
@@ -1243,13 +1335,17 @@ namespace DatabaseCloner {
             return true;
         }
 
-        private string WriteSchemaTableConstraint( List<DatabaseConstraint> constraint ) {
+        private string WriteSchemaTableConstraint( List<DatabaseConstraint> constraint, string table ) {
             string schema = string.Empty;
 
             if( constraint.Count > 0 ) {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         foreach( DatabaseConstraint entry_constraint in constraint ) {
+                            schema += "--\r\n"
+                                + "-- Constraint for table '" + table + "'\r\n"
+                                + "--\r\n\r\n";
+
                             schema += "\r\n\tCONSTRAINT [" + entry_constraint.name + "] ";
                             schema += ( entry_constraint.type == "PK" ) ? ( "PRIMARY KEY " ) : ( "UNIQUE " );
 
@@ -1308,6 +1404,9 @@ namespace DatabaseCloner {
 
                     case "sqlite": {
                         foreach( DatabaseConstraint entry_constraint in constraint ) {
+                            schema += "--\r\n"
+                                + "-- Constraint for table '" + table + "'\r\n"
+                                + "--\r\n\r\n";
                             schema += "\r\n\tCONSTRAINT " + entry_constraint.name + " PRIMARY KEY (";
 
                             foreach( KeyValuePair<string, bool> entry_column in entry_constraint.column ) {
@@ -1332,7 +1431,10 @@ namespace DatabaseCloner {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
                         foreach( DatabaseUniqueKey entry_uniquekey in uniquekey ) {
-                            schema += "\r\nCREATE ";
+                            schema += "--\r\n"
+                                + "-- Unique key for table '" + entry_uniquekey.table + "'\r\n"
+                                + "--\r\n\r\n";
+                            schema += "CREATE ";
                             if( entry_uniquekey.isUnique ) {
                                 schema += "UNIQUE ";
                             }
@@ -1349,13 +1451,18 @@ namespace DatabaseCloner {
                             }
                             schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
                             schema += ")\r\n\tWITH (";
-                            schema += ( entry_uniquekey.isPadded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
-                            schema += ( entry_uniquekey.staticticsNoreCompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
-                            schema += ( entry_uniquekey.sortInTempDB ) ? ( "SORT_IN_TEMPDB = ON, " ) : ( "SORT_IN_TEMPDB = OFF, " );
-                            schema += ( entry_uniquekey.ignoreDuplicateKey ) ? ( "IGNORE_DUP_KEY = ON, " ) : ( "IGNORE_DUP_KEY = OFF, " );
-                            schema += ( entry_uniquekey.dropExisting ) ? ( "DROP_EXISTING = ON, " ) : ( "DROP_EXISTING = OFF, " );
-                            schema += ( entry_uniquekey.allowRowLocks ) ? ( "ALLOW_ROW_LOCKS = ON, " ) : ( "ALLOW_ROW_LOCKS = OFF, " );
-                            schema += ( entry_uniquekey.allowPageLocks ) ? ( "ALLOW_PAGE_LOCKS = ON" ) : ( "ALLOW_PAGE_LOCKS = OFF" );
+                            schema += string.Format(
+                                "PAD_INDEX = {0}, STATISTICS_NORECOMPUTE = {1}, SORT_IN_TEMPDB = {2}, IGNORE_DUP_KEY = {3}, DROP_EXISTING = {4}, ONLINE = {5}, ALLOW_ROW_LOCKS = {6}, OPTIMIZE_FOR_SEQUENTIAL_KEY = {7}",
+                                (entry_uniquekey.isPadded) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.staticticsNoreCompute) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.sortInTempDB) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.ignoreDuplicateKey) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.dropExisting) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.online) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.allowRowLocks) ? ("ON") : ("OFF"),
+                                (entry_uniquekey.optimize_for_sequential_key) ? ("ON") : ("OFF")
+                            );
+
                             schema += ") ON[PRIMARY];\r\n\r\n";
                         }
                     }
@@ -1368,6 +1475,9 @@ namespace DatabaseCloner {
 
                     case "sqlite": {
                         foreach( DatabaseUniqueKey entry_uniquekey in uniquekey ) {
+                            schema += "--\r\n"
+                                + "-- Unique key for table '" + entry_uniquekey.table + "'\r\n"
+                                + "--\r\n\r\n";
                             schema += "\r\nCREATE INDEX " + entry_uniquekey.name + " ON " + entry_uniquekey.table + " (";
                             foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.columns ) {
                                 schema += entry_column.Key + ", ";
@@ -1393,7 +1503,11 @@ namespace DatabaseCloner {
             if( foreignkey.Count > 0 ) {
                 switch( db.serverType.ToLower() ) {
                     case "mssql": {
+                        schema += "--\r\n"
+                            + "-- Foreign key for table '" + foreignkey[ 0 ].ptable + "'\r\n"
+                            + "--\r\n\r\n";
                         schema += "\r\nALTER TABLE [" + foreignkey[ 0 ].pschema + "].[" + foreignkey[ 0 ].ptable + "] ADD ";
+
                         foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
                             schema += "\r\n\tCONSTRAINT [" + entry_foreignkey.name + "] FOREIGN KEY (";
                             foreach( string column in entry_foreignkey.columns ) {
@@ -1412,6 +1526,9 @@ namespace DatabaseCloner {
                     break;
 
                     case "mysql": {
+                        schema += "--\r\n"
+                            + "-- Foreign key for table '" + foreignkey[ 0 ].ptable + "'\r\n"
+                            + "--\r\n\r\n";
                         schema += "\r\nALTER TABLE " + foreignkey[ 0 ].ptable + "";
 
                         foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
@@ -1434,6 +1551,9 @@ namespace DatabaseCloner {
 
                     case "sqlite": {                       
                         foreach( DatabaseForeignkey entry_foreignkey in foreignkey ) {
+                            schema += "--\r\n"
+                                + "-- Foreign key for table '" + foreignkey[ 0 ].ptable + "'\r\n"
+                                + "--\r\n\r\n";
                             schema += "\r\n\tFOREIGN KEY (" + entry_foreignkey.columns[0] + ") REFERENCES " + entry_foreignkey.references.table +  " (" + entry_foreignkey.references.column + ")";
                             schema += "\r\n\t\tON DELETE " + entry_foreignkey.references.onDelete + " ON UPDATE " + entry_foreignkey.references.onUpdate + ",";
                         }
@@ -1474,8 +1594,14 @@ namespace DatabaseCloner {
                                 tof[ i ] = mssqlReader.GetFieldType( i );
                             }
 
+                            schema = "--\r\n"
+                                + "-- Table data for table '" + entry_table.schema + "." + entry_table.name + "'\r\n"
+                                + "--\r\n\r\n";
+
+                            sw.Write( schema );
+
                             if( entry_table.isIdentity ) {
-                                sw.Write( "SET IDENTITY_INSERT [" + entry_table.schema + "].[" + entry_table.name + "] ON;\r\n" );
+                                sw.Write( "SET IDENTITY_INSERT [" + entry_table.schema + "].[" + entry_table.name + "] ON;\r\n\r\n" );
                             }
 
                             int j = 0;
@@ -1545,7 +1671,7 @@ namespace DatabaseCloner {
                             } while( mssqlReader.Read() );
 
                             if( schema.Length > 0 ) {
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
+                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n\r\n";
 
                                 sw.Write( schema );
                                 sw.Flush();
@@ -1596,6 +1722,12 @@ namespace DatabaseCloner {
 
                                 tof[ i ] = mysqlReader.GetFieldType( i );
                             }
+
+                            schema = "--\r\n"
+                                + "-- Table data for table '" + entry_table.name + "'\r\n"
+                                + "--\r\n\r\n";
+
+                            sw.Write( schema );
 
                             int j = 0;
                             do {
@@ -1693,6 +1825,12 @@ namespace DatabaseCloner {
                                 tof[ i ] = sqliteReader.GetFieldType( i );
                             }
 
+                            schema = "--\r\n"
+                                + "-- Table data for table '" + entry_table.name + "'\r\n"
+                                + "--\r\n\r\n";
+
+                            sw.Write( schema );
+
                             int j = 0;
                             do {
                                 if( j % rowPerInsert == 0 ) {
@@ -1775,17 +1913,29 @@ namespace DatabaseCloner {
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    schema = entry_view.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Views\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += entry_view.schema + ";\r\n\r\n";
                 }
                 break;
 
                 case "mysql": {
-                    schema = "CREATE ALGORITHM=UNDEFINED DEFINER=" + entry_view.definer + " SQL SECURITY " + entry_view.securityType + " VIEW " + entry_view.name + " AS " + entry_view.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Views\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += "CREATE ALGORITHM=UNDEFINED DEFINER=" + entry_view.definer + " SQL SECURITY " + entry_view.securityType + " VIEW " + entry_view.name + " AS " + entry_view.schema + ";\r\n\r\n";
                 }
                 break;
 
                 case "sqlite": {
-                    schema = entry_view.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Views\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += entry_view.schema + ";\r\n\r\n";
                 }
                 break;
             }
@@ -1801,11 +1951,18 @@ namespace DatabaseCloner {
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    schema = entry_function.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Functions\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += entry_function.schema + ";\r\n\r\n";
                 }
                 break;
 
                 case "mysql": {
+                    schema = "--\r\n"
+                        + "-- Functions\r\n"
+                        + "--\r\n\r\n";
                     schema += "DELIMITER $$\r\n";
                     schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(";
 
@@ -1845,11 +2002,18 @@ namespace DatabaseCloner {
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    schema = entry_trigger.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Triggers\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += entry_trigger.schema + ";\r\n\r\n";
                 }
                 break;
 
                 case "mysql": {
+                    schema = "--\r\n"
+                        + "-- Triggers\r\n"
+                        + "--\r\n\r\n";
                     schema += "DELIMITER $$\r\n";
                     schema += "CREATE TRIGGER " + entry_trigger.name + " " + entry_trigger.actionTiming + " " + entry_trigger.eventManupilation + " ON " + entry_trigger.table + "";
                     schema += "\r\n\tFOR EACH " + entry_trigger.actionOrientation + "";
@@ -1860,7 +2024,10 @@ namespace DatabaseCloner {
                 break;
 
                 case "sqlite": {
-                    schema = entry_trigger.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Triggers\r\n"
+                        + "--\r\n\r\n";
+                    schema += entry_trigger.schema + ";\r\n\r\n";
                 }
                 break;
             }
@@ -1876,7 +2043,11 @@ namespace DatabaseCloner {
 
             switch( db.serverType.ToLower() ) {
                 case "mssql": {
-                    schema = entry_procedure.schema + ";\r\n\r\n";
+                    schema = "--\r\n"
+                        + "-- Procedures\r\n"
+                        + "--\r\n\r\n";
+
+                    schema += entry_procedure.schema + ";\r\n\r\n";
                 }
                 break;
 
@@ -2270,6 +2441,7 @@ namespace DatabaseCloner {
         public bool staticticsNoreCompute;
         public bool sortInTempDB;
         public bool online;
+        public bool optimize_for_sequential_key;
 
         public Dictionary<string, bool> columns;
 
@@ -2284,6 +2456,8 @@ namespace DatabaseCloner {
             online = false;
             staticticsNoreCompute = false;
             sortInTempDB = false;
+            online = false;
+            optimize_for_sequential_key = false;
         }
     }
 
