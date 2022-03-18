@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.IO;
 using System.Threading;
-using System.Globalization;
 
 using System.Data.SqlClient;
 using System.Data.SQLite;
@@ -14,40 +10,8 @@ using MySql.Data.MySqlClient;
 
 using System.Text.RegularExpressions;
 
-namespace proGEDIA.utilities {
+namespace proGEDIA.Utilities {
     public static class StringExtensions {
-        public static string Right( this string str, int length ) {
-            if( string.IsNullOrEmpty( str ) ) {
-                str = string.Empty;
-            } else if( str.Length > length ) {
-                str = str.Substring( str.Length - length );
-            }
-
-            return str;
-        }
-
-        public static string Right( this string str, int length, char repeat ) {
-            if( string.IsNullOrEmpty( str ) ) {
-                str = string.Empty;
-            } else if( str.Length > length ) {
-                str = str.Substring( str.Length - length );
-            } else if( str.Length < length ) {
-                str = ( new string( repeat, length - str.Length ) ) + str;
-            }
-
-            return str;
-        }
-
-        public static string Left( this string str, int length ) {
-            if( string.IsNullOrEmpty( str ) ) {
-                str = string.Empty;
-            } else if( str.Length > length ) {
-                str = str.Substring( 0, str.Length - length );
-            }
-
-            return str;
-        }
-
         public static string Cut( this string str, int length ) {
             if( string.IsNullOrEmpty( str ) ) {
                 str = string.Empty;
@@ -58,7 +22,7 @@ namespace proGEDIA.utilities {
             return str;
         }
 
-        public static string sqlText( this string str ) {
+        public static string SqlText( this string str ) {
             return str.Replace( "'", "\\'" ).Replace("\r", "\\r").Replace("\n","\\n");
         }
 
@@ -72,12 +36,12 @@ namespace proGEDIA.utilities {
             return hex.ToString().ToUpper();
         }
 
-        public static string cleanSQL( string SQL ) {
+        public static string CleanSQL( string SQL ) {
             return Regex.Replace( SQL.Replace( "[", "" ).Replace( "]", "" ).Replace( "\r", " " ).Replace( "\n", " " ), @"([\s]{2,})", " " );
         }
     }
 
-    public static class encryption {
+    public static class Encryption {
         public static string EncryptPassword( string password ) {
             byte[ ] data = Encoding.UTF8.GetBytes( password );
             byte[ ] encrypted_data = ProtectedData.Protect( data, null, DataProtectionScope.CurrentUser );
@@ -127,7 +91,7 @@ namespace proGEDIA.utilities {
         }
     }
 
-    public class database {
+    public class Database {
         public string serverType;
         public string serverName;
         public string serverPort;
@@ -143,7 +107,7 @@ namespace proGEDIA.utilities {
         public MySqlConnection mysqlCon;
         public SQLiteConnection sqliteCon;
 
-        public database( ) {
+        public Database( ) {
             userAuth = false;
             rememberPassword = true;
         }
@@ -199,7 +163,7 @@ namespace proGEDIA.utilities {
             }
         }
 
-        public bool Compare( database set ) {
+        public bool Compare( Database set ) {
             if( serverType == set.serverType && serviceName == set.serviceName && databaseFile == set.databaseFile && userName == set.userName ) {
                 return true;
             } else {

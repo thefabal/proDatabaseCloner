@@ -9,7 +9,7 @@ using System.Windows.Forms;
 
 namespace DatabaseCloner {
     public partial class frmConnectionManager : Form {
-        public frmConnectionManager( frmMain frmMain, ref proGEDIA.utilities.database database ) {
+        public frmConnectionManager( frmMain frmMain, ref proGEDIA.Utilities.Database database ) {
             this.frmMain = frmMain;
             this.database = database;
 
@@ -17,7 +17,7 @@ namespace DatabaseCloner {
         }
 
         private readonly frmMain frmMain;
-        private readonly proGEDIA.utilities.database database;
+        private readonly proGEDIA.Utilities.Database database;
 
         private void frmConnectionManager_Load( object sender, EventArgs e ) {
             cbServerType.SelectedIndex = 0;
@@ -110,7 +110,7 @@ namespace DatabaseCloner {
 
             cbServerName.Items.Clear();
             cbServerName.Text = "";
-            foreach( proGEDIA.utilities.database item in frmMain.settings.database ) {
+            foreach( proGEDIA.Utilities.Database item in frmMain.settings.database ) {
                 if( item.serverType == cbServerType.Text ) {
                     cbServerName.Items.Add( item );
                 }
@@ -134,7 +134,7 @@ namespace DatabaseCloner {
         }
 
         private void cbServerName_SelectedIndexChanged( object sender, EventArgs e ) {
-            proGEDIA.utilities.database item = (proGEDIA.utilities.database) cbServerName.SelectedItem;
+            proGEDIA.Utilities.Database item = (proGEDIA.Utilities.Database) cbServerName.SelectedItem;
 
             tbServerPort.Text = item.serverPort;
             tbServiceName.Text = item.serviceName;

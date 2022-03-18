@@ -14,10 +14,10 @@ namespace DatabaseCloner {
     public partial class frmDataSelector: Form {
         public DatabaseBackup backup_settings;
 
-        private readonly proGEDIA.utilities.database database;
+        private readonly proGEDIA.Utilities.Database database;
         private readonly string db_name;
 
-        public frmDataSelector( proGEDIA.utilities.database database, string db_name, ref DatabaseBackup backup_settings ) {
+        public frmDataSelector( proGEDIA.Utilities.Database database, string db_name, ref DatabaseBackup backup_settings ) {
             this.database = database;
             this.db_name = db_name;
             this.backup_settings = backup_settings;

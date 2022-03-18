@@ -16,9 +16,9 @@ namespace DatabaseCloner {
 
         public DatabaseBackup backup;
         public Settings settings = new Settings();
-        public proGEDIA.utilities.database db_source = new proGEDIA.utilities.database();
-        public proGEDIA.utilities.database db_destination = new proGEDIA.utilities.database();
-        public proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
+        public proGEDIA.Utilities.Database db_source = new proGEDIA.Utilities.Database();
+        public proGEDIA.Utilities.Database db_destination = new proGEDIA.Utilities.Database();
+        public proGEDIA.Utilities.LogWriter log = new proGEDIA.Utilities.LogWriter();
 
         public frmMain() {
             InitializeComponent();
@@ -43,7 +43,7 @@ namespace DatabaseCloner {
             }
         }
 
-        private void loadDatabases( proGEDIA.utilities.database db, ComboBox cb ) {
+        private void loadDatabases( proGEDIA.Utilities.Database db, ComboBox cb ) {
             cb.Items.Clear();
             switch( db.serverType.ToLower() ) {
                 case "mssql":
@@ -217,13 +217,13 @@ namespace DatabaseCloner {
 
         public bool insertColumnName = true;
 
-        public List<proGEDIA.utilities.database> database = new List<proGEDIA.utilities.database>();
+        public List<proGEDIA.Utilities.Database> database = new List<proGEDIA.Utilities.Database>();
 
         public Settings() {
 
         }
 
-        public void Add( proGEDIA.utilities.database set ) {
+        public void Add( proGEDIA.Utilities.Database set ) {
             foreach( var item in database.Select( ( value, i ) => new { i, value } ) ) {
                 if( item.value.serverType == set.serverType && item.value.serverName == set.serverName && item.value.serverPort == set.serverPort ) {
                     database.RemoveAt( item.i );
@@ -248,11 +248,11 @@ namespace DatabaseCloner {
         public void Get() {
             string database_setting = Properties.Settings.Default.database_setting.ToString();
             if( database_setting.Length > 0 ) {
-                database_setting = proGEDIA.utilities.encryption.DecryptPassword( database_setting );
+                database_setting = proGEDIA.Utilities.Encryption.DecryptPassword( database_setting );
                 JavaScriptSerializer serializer = new JavaScriptSerializer();
 
                 try {
-                    this.database = (List<proGEDIA.utilities.database>)serializer.Deserialize( database_setting, typeof( List<proGEDIA.utilities.database> ) );
+                    this.database = (List<proGEDIA.Utilities.Database>)serializer.Deserialize( database_setting, typeof( List<proGEDIA.Utilities.Database> ) );
                 } catch( Exception e ) {
                     throw new Exception( e.Message );
                 }
@@ -284,7 +284,7 @@ namespace DatabaseCloner {
             JavaScriptSerializer serializer = new JavaScriptSerializer();
             string settings = serializer.Serialize( database );
 
-            Properties.Settings.Default.database_setting = proGEDIA.utilities.encryption.EncryptPassword( settings );
+            Properties.Settings.Default.database_setting = proGEDIA.Utilities.Encryption.EncryptPassword( settings );
             Properties.Settings.Default.rowPerInsert = rowPerInsert;
             Properties.Settings.Default.insertColumnName = insertColumnName;
 

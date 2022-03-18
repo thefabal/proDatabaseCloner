@@ -23,12 +23,12 @@ namespace DatabaseCloner {
         private readonly Dictionary<string, DatabaseProcedure> procedure = new Dictionary<string, DatabaseProcedure>();
 
         private StreamWriter sw;
-        private readonly proGEDIA.utilities.LogWriter log = new proGEDIA.utilities.LogWriter();
-        private readonly proGEDIA.utilities.database db;
+        private readonly proGEDIA.Utilities.LogWriter log = new proGEDIA.Utilities.LogWriter();
+        private readonly proGEDIA.Utilities.Database db;
         private readonly int rowPerInsert;
         private readonly bool insertColumnNames = false;
 
-        public DatabaseBackup( proGEDIA.utilities.database db, string databaseName, int rowPerInsert, bool insertColumnNames ) {
+        public DatabaseBackup( proGEDIA.Utilities.Database db, string databaseName, int rowPerInsert, bool insertColumnNames ) {
             this.db = db;
             this.databaseName = databaseName;
             this.rowPerInsert = rowPerInsert;
@@ -486,7 +486,7 @@ namespace DatabaseCloner {
 
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
-                            Match match = ( new Regex( @"CONSTRAINT ([^\s]{1,}) PRIMARY KEY([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 1 ) ) );
+                            Match match = ( new Regex( @"CONSTRAINT ([^\s]{1,}) PRIMARY KEY([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.Utilities.StringExtensions.CleanSQL( sqliteReader.GetString( 1 ) ) );
 
                             if( match.Success ) {
                                 table[ sqliteReader.GetString( 0 ) ].constraints.Add( new DatabaseConstraint() {
@@ -577,7 +577,7 @@ namespace DatabaseCloner {
                         SQLiteDataReader sqliteReader = sqliteCom.ExecuteReader();
                         while( sqliteReader.Read() ) {
                             if( sqliteReader.IsDBNull( 2 ) == false ) {
-                                Match match = ( new Regex( @"CREATE INDEX([\s]{1,})([^\s]{1,})([\s]{1,})ON([\s]{1,})([^\s]{1,})([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.utilities.StringExtensions.cleanSQL( sqliteReader.GetString( 2 ) ) );
+                                Match match = ( new Regex( @"CREATE INDEX([\s]{1,})([^\s]{1,})([\s]{1,})ON([\s]{1,})([^\s]{1,})([\s]{1,})\(([^\s]{1,})\)" ) ).Match( proGEDIA.Utilities.StringExtensions.CleanSQL( sqliteReader.GetString( 2 ) ) );
 
                                 if( match.Success ) {
                                     table[ sqliteReader.GetString( 1 ) ].uniqueKeys.Add( new DatabaseUniqueKey() {
@@ -755,7 +755,7 @@ namespace DatabaseCloner {
             if( views.Length == 0 ) {
                 return true;
             } else {
-                views = proGEDIA.utilities.StringExtensions.Cut( views, 2 );
+                views = proGEDIA.Utilities.StringExtensions.Cut( views, 2 );
             }
 
             switch( db.serverType.ToLower() ) {
@@ -853,7 +853,7 @@ namespace DatabaseCloner {
             if( functions.Length == 0 ) {
                 return true;
             } else {
-                functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
+                functions = proGEDIA.Utilities.StringExtensions.Cut( functions, 2 );
             }
 
             switch( db.serverType.ToLower() ) {
@@ -936,7 +936,7 @@ namespace DatabaseCloner {
             if( triggers.Length == 0 ) {
                 return true;
             } else {
-                triggers = proGEDIA.utilities.StringExtensions.Cut( triggers, 2 );
+                triggers = proGEDIA.Utilities.StringExtensions.Cut( triggers, 2 );
             }
 
             switch( db.serverType.ToLower() ) {
@@ -1035,7 +1035,7 @@ namespace DatabaseCloner {
             if( functions.Length == 0 ) {
                 return true;
             } else {
-                functions = proGEDIA.utilities.StringExtensions.Cut( functions, 2 );
+                functions = proGEDIA.Utilities.StringExtensions.Cut( functions, 2 );
             }
 
             switch( db.serverType.ToLower() ) {
@@ -1115,7 +1115,7 @@ namespace DatabaseCloner {
                      * Primary and Unique Constraints
                     **/
                     schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+                    schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 1 );
 
                     schema += "\r\n) ON [PRIMARY]";
                     if( entry_table.isTextimageOn ) {
@@ -1218,7 +1218,7 @@ namespace DatabaseCloner {
                      * Primary and Unique Constraints
                     **/
                     schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+                    schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n) ENGINE=" + entry_table.dbEngine + " DEFAULT CHARSET=" + entry_table.dbCharacterSet + " COLLATE=" + entry_table.dbCollation + ";\r\n\r\n";
                     
                     backSchema += WriteSchemaTableForeignKey( entry_table.foreignKeys );
@@ -1250,14 +1250,14 @@ namespace DatabaseCloner {
                         schema += ",";
                     }
 
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+                    schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 1 );
 
                     /**
                      * Primary Constraints
                     **/
                     schema += WriteSchemaTableConstraint( entry_table.constraints, entry_table.name );
 
-                    schema = proGEDIA.utilities.StringExtensions.Cut( schema, 1 );
+                    schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 1 );
                     schema += "\r\n);\r\n";
 
                     /**
@@ -1361,7 +1361,7 @@ namespace DatabaseCloner {
                                 schema += ( entry_column.Value ) ? ( "DESC" ) : ( "ASC" );
                                 schema += ", ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") WITH (";
                             schema += ( entry_constraint.isPadded ) ? ( "PAD_INDEX = ON, " ) : ( "PAD_INDEX = OFF, " );
                             schema += ( entry_constraint.staticticsNoreCompute ) ? ( "STATISTICS_NORECOMPUTE = ON, " ) : ( "STATISTICS_NORECOMPUTE = OFF, " );
@@ -1382,7 +1382,7 @@ namespace DatabaseCloner {
                                     schema += entry_column.Key + ", ";
                                 }
 
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                                schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                                 schema += "),";
                             } else {
                                 if( entry_constraint.isUnique ) {
@@ -1395,7 +1395,7 @@ namespace DatabaseCloner {
                                     schema += entry_column.Key + ", ";
                                 }
 
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                                schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                                 schema += "),";
                             }
                         }
@@ -1413,7 +1413,7 @@ namespace DatabaseCloner {
                                 schema += entry_column.Key + ", ";
                             }
 
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += "),";
                         }
                     }
@@ -1449,7 +1449,7 @@ namespace DatabaseCloner {
                                 schema += ( entry_column.Value ) ? ( "DESC" ) : ( "ASC" );
                                 schema += ", ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ")\r\n\tWITH (";
                             schema += string.Format(
                                 "PAD_INDEX = {0}, STATISTICS_NORECOMPUTE = {1}, SORT_IN_TEMPDB = {2}, IGNORE_DUP_KEY = {3}, DROP_EXISTING = {4}, ONLINE = {5}, ALLOW_ROW_LOCKS = {6}, OPTIMIZE_FOR_SEQUENTIAL_KEY = {7}",
@@ -1482,7 +1482,7 @@ namespace DatabaseCloner {
                             foreach( KeyValuePair<string, bool> entry_column in entry_uniquekey.columns ) {
                                 schema += entry_column.Key + ", ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ");";
                         }
 
@@ -1513,12 +1513,12 @@ namespace DatabaseCloner {
                             foreach( string column in entry_foreignkey.columns ) {
                                 schema += "[" + column + "], ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") REFERENCES [" + entry_foreignkey.rschema + "].[" + entry_foreignkey.rtable + "] (";
                             foreach( string column in entry_foreignkey.rcolumns ) {
                                 schema += "[" + column + "], ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ")";
                         }
                         schema += ";\r\n\r\n";
@@ -1536,12 +1536,12 @@ namespace DatabaseCloner {
                             foreach( string column in entry_foreignkey.columns ) {
                                 schema += "" + column + ", ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") REFERENCES " + entry_foreignkey.rtable + " (";
                             foreach( string column in entry_foreignkey.rcolumns ) {
                                 schema += "" + column + ", ";
                             }
-                            schema = proGEDIA.utilities.StringExtensions.Cut( schema, 2 );
+                            schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 2 );
                             schema += ") ON DELETE CASCADE ON UPDATE RESTRICT";
                         }
 
@@ -1625,7 +1625,7 @@ namespace DatabaseCloner {
                                         schema += "NULL";
                                     } else {
                                         switch( tof[ i ].Name ) {
-                                            case "String":      { schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( mssqlReader.GetString( i ) ) + "'"; } break;
+                                            case "String":      { schema += "'" + proGEDIA.Utilities.StringExtensions.SqlText( mssqlReader.GetString( i ) ) + "'"; } break;
                                             case "Date":        { schema += "'" + mssqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd" ) + "'"; } break;
                                             case "DateTime":    { schema += "'" + mssqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'"; } break;
                                             case "Boolean":     { schema += ( mssqlReader.GetBoolean( i ) ) ? ( "1" ) : ( "0" ); } break;
@@ -1647,7 +1647,7 @@ namespace DatabaseCloner {
                                                     curPos += bufferSize;
                                                 }
 
-                                                schema += "'0x" + proGEDIA.utilities.StringExtensions.ByteArrayToString( result ) + "'";
+                                                schema += "'0x" + proGEDIA.Utilities.StringExtensions.ByteArrayToString( result ) + "'";
                                             }
                                             break;
 
@@ -1671,7 +1671,7 @@ namespace DatabaseCloner {
                             } while( mssqlReader.Read() );
 
                             if( schema.Length > 0 ) {
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n\r\n";
+                                schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n\r\n";
 
                                 sw.Write( schema );
                                 sw.Flush();
@@ -1746,7 +1746,7 @@ namespace DatabaseCloner {
                                         schema += "NULL";
                                     } else {
                                         switch( tof[ i ].Name ) {
-                                            case "String":      { schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( mysqlReader.GetString( i ) ) + "'"; } break;
+                                            case "String":      { schema += "'" + proGEDIA.Utilities.StringExtensions.SqlText( mysqlReader.GetString( i ) ) + "'"; } break;
                                             case "DateTime":    { schema += "'" + mysqlReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'"; } break;
                                             case "UInt16":
                                             case "Int16":       { schema += "" + mysqlReader.GetInt16( i ) + ""; } break;
@@ -1777,7 +1777,7 @@ namespace DatabaseCloner {
                             } while( mysqlReader.Read() );
 
                             if( schema.Length > 0 ) {
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
+                                schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
 
                                 sw.Write( schema );
                                 sw.Flush();
@@ -1848,7 +1848,7 @@ namespace DatabaseCloner {
                                         schema += "NULL";
                                     } else {
                                         switch( tof[ i ].Name ) {
-                                            case "String":      { schema += "'" + proGEDIA.utilities.StringExtensions.sqlText( sqliteReader.GetString( i ) ) + "'"; } break;
+                                            case "String":      { schema += "'" + proGEDIA.Utilities.StringExtensions.SqlText( sqliteReader.GetString( i ) ) + "'"; } break;
                                             case "DateTime":    { schema += "'" + sqliteReader.GetDateTime( i ).ToString( "yyyy-MM-dd HH:mm:ss" ) + "'"; } break;
                                             case "UInt16":
                                             case "Int16":       { schema += "" + sqliteReader.GetInt16( i ) + ""; } break;
@@ -1880,7 +1880,7 @@ namespace DatabaseCloner {
                             } while( sqliteReader.Read() );
 
                             if( schema.Length > 0 ) {
-                                schema = proGEDIA.utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
+                                schema = proGEDIA.Utilities.StringExtensions.Cut( schema, 3 ) + ";\r\n";
 
                                 sw.Write( schema );
                                 sw.Flush();
