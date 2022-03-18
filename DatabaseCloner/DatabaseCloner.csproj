@@ -115,6 +115,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="class\class.database.backup.cs" />
+    <Compile Include="class\class.DatabaseBackupSettings.cs" />
+    <Compile Include="class\class.DatabaseColumn.cs" />
+    <Compile Include="class\class.DatabaseConstraint.cs" />
+    <Compile Include="class\class.DatabaseForeignkey.cs" />
+    <Compile Include="class\class.DatabaseFunction.cs" />
+    <Compile Include="class\class.DatabaseProcedure.cs" />
+    <Compile Include="class\class.DatabaseReferences.cs" />
+    <Compile Include="class\class.DatabaseTable.cs" />
+    <Compile Include="class\class.DatabaseTableEntry.cs" />
+    <Compile Include="class\class.DatabaseTrigger.cs" />
+    <Compile Include="class\class.DatabaseUniqueKey.cs" />
+    <Compile Include="class\class.DatabaseView.cs" />
+    <Compile Include="class\class.FunctionParameterList.cs" />
     <Compile Include="frmSettings.cs">
       <SubType>Form</SubType>
     </Compile>

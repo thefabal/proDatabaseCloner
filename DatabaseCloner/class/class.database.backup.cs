@@ -12,7 +12,7 @@ namespace DatabaseCloner {
     public class DatabaseBackup {
         public string databaseName = string.Empty;
 
-        public List<BackupSettings> backupSettings = new List<BackupSettings>();
+        public List<DatabaseBackupSettings> backupSettings = new List<DatabaseBackupSettings>();
 
         public event EventHandler<string> UpdateStatus;
 
@@ -131,7 +131,7 @@ namespace DatabaseCloner {
 
             schema = string.Empty;
 
-            foreach( BackupSettings bs in backupSettings ) {
+            foreach( DatabaseBackupSettings bs in backupSettings ) {
                 if( bs.type == "table" ) {
                     if( bs.backupSchema ) {
                         if( WriteSchemaTable( table[ bs.name ], ref schema ) == false ) {
@@ -179,7 +179,7 @@ namespace DatabaseCloner {
 
         private bool GetSchemaTable( ) {
             string tables = string.Empty;
-            foreach( BackupSettings entry in backupSettings ) {
+            foreach( DatabaseBackupSettings entry in backupSettings ) {
                 if( entry.type == "table" ) {
                     tables += ", '" + entry.name + "'";
                 }
@@ -746,7 +746,7 @@ namespace DatabaseCloner {
 
         private bool GetSchemaView( ) {
             string views = string.Empty;
-            foreach( BackupSettings entry in backupSettings ) {
+            foreach( DatabaseBackupSettings entry in backupSettings ) {
                 if( entry.type == "view" && entry.backupSchema ) {
                     views += "'" + entry.name + "', ";
                 }
@@ -844,7 +844,7 @@ namespace DatabaseCloner {
 
         private bool GetSchemaFunction( ) {
             string functions = string.Empty;
-            foreach( BackupSettings entry in backupSettings ) {
+            foreach( DatabaseBackupSettings entry in backupSettings ) {
                 if( entry.type == "function" && entry.backupSchema ) {
                     functions += "'" + entry.name + "', ";
                 }
@@ -901,7 +901,7 @@ namespace DatabaseCloner {
                                 }
 
                                 if( mysqlReader.IsDBNull( 7 ) == false ) {
-                                    function[ mysqlReader.GetString( 0 ) ].parameterList.Add( new ParameterList( mysqlReader.GetString( 7 ), mysqlReader.GetString( 8 ) ) );
+                                    function[ mysqlReader.GetString( 0 ) ].parameterList.Add( new FunctionParameterList( mysqlReader.GetString( 7 ), mysqlReader.GetString( 8 ) ) );
                                 }                                
                             }
                         }
@@ -927,7 +927,7 @@ namespace DatabaseCloner {
 
         private bool GetSchemaTrigger( ) {
             string triggers = string.Empty;
-            foreach( BackupSettings entry in backupSettings ) {
+            foreach( DatabaseBackupSettings entry in backupSettings ) {
                 if( entry.type == "trigger" && entry.backupSchema ) {
                     triggers += "'" + entry.name + "', ";
                 }
@@ -1026,7 +1026,7 @@ namespace DatabaseCloner {
 
         private bool GetSchemaProcedure() {
             string functions = string.Empty;
-            foreach( BackupSettings entry in backupSettings ) {
+            foreach( DatabaseBackupSettings entry in backupSettings ) {
                 if( entry.type == "procedure" && entry.backupSchema ) {
                     functions += "'" + entry.name + "', ";
                 }
@@ -1967,7 +1967,7 @@ namespace DatabaseCloner {
                     schema += "CREATE DEFINER=" + entry_function.definer + " FUNCTION " + entry_function.name + "(";
 
                     if( entry_function.parameterList.Count > 0 ) {
-                        foreach( ParameterList item in entry_function.parameterList ) {
+                        foreach( FunctionParameterList item in entry_function.parameterList ) {
                             schema += item.name + " " + item.type + ", ";
                         }
 
@@ -2305,225 +2305,6 @@ namespace DatabaseCloner {
             }
 
             return tableList;
-        }
-    }
-
-    public class DatabaseTable {
-        public string schema;
-        public string name;
-
-        /* MsSQL */
-        public bool isTextimageOn;
-        public bool isIdentity;
-
-        /* MySQL */
-        public int autoIncrement;
-        public string dbEngine;
-        public string dbCollation;
-        public string dbCharacterSet;
-
-        public List<DatabaseColumn> columns = new List<DatabaseColumn>();
-        public List<DatabaseConstraint> constraints = new List<DatabaseConstraint>();
-        public List<DatabaseUniqueKey> uniqueKeys = new List<DatabaseUniqueKey>();
-        public List<DatabaseForeignkey> foreignKeys = new List<DatabaseForeignkey>();
-
-        public DatabaseTable( string schema, string name ) {
-            this.schema = schema;
-            this.name = name;
-        }
-    }
-
-    public class DatabaseColumn {
-        public bool isNullable;
-        public bool isIdentity;
-        public Int32? maxLength;
-        public string name;
-        public string type;
-        public string characterSet;
-        public string collationName;
-        public string columnDefault;
-
-        public DatabaseColumn( ) {
-
-        }
-
-        public DatabaseColumn( string name, string type, Int32? maxLength, bool isNullable, bool isIdentity ) {
-            this.name = name;
-            this.type = type;
-            this.maxLength = maxLength;
-            this.isNullable = isNullable;
-            this.isIdentity = isIdentity;
-        }
-    }
-
-    public class DatabaseView {
-        public string name;
-        public string schema;
-        public string definer;
-        public string securityType;
-
-        public DatabaseView( ) {
-
-        }
-    }
-
-    public class DatabaseProcedure {
-        public string name;
-        public string schema;
-
-        public DatabaseProcedure() {
-
-        }
-    }
-
-    public class DatabaseFunction {
-        public bool isDeterministic;
-        public string name;
-        public string returns;
-        public string schema;
-        public string definer;
-        public List<ParameterList> parameterList = new List<ParameterList>();
-
-        public DatabaseFunction() {
-
-        }
-    }
-
-    public class DatabaseTrigger {
-        public string name;
-        public string table;
-        public string actionTiming;
-        public string eventManupilation;
-        public string schema;
-        public string actionOrientation;
-
-        public DatabaseTrigger() {
-
-        }
-    }
-
-    public class DatabaseConstraint {
-        public string name;
-        public string type;
-        public Dictionary<string, bool> column;
-        public bool allowPageLocks;
-        public bool allowRowLocks;
-        public bool clustered;
-        public bool ignoreDuplicateKey;
-        public bool isDescendingKey;
-        public bool isPadded;
-        public bool isUnique;
-        public bool staticticsNoreCompute;
-
-        public DatabaseConstraint( ) {
-            clustered = false;
-            isDescendingKey = false;
-            isPadded = false;
-            staticticsNoreCompute = false;
-            ignoreDuplicateKey = false;
-            allowRowLocks = false;
-            allowPageLocks = false;
-            isUnique = false;
-        }
-    }
-
-    public class DatabaseUniqueKey {
-        public string name;
-        public string schema;
-        public string table;
-        public bool allowPageLocks;
-        public bool allowRowLocks;
-        public bool clustered;
-        public bool dropExisting;
-        public bool ignoreDuplicateKey;
-        public bool isPadded;
-        public bool isUnique;
-        public bool staticticsNoreCompute;
-        public bool sortInTempDB;
-        public bool online;
-        public bool optimize_for_sequential_key;
-
-        public Dictionary<string, bool> columns;
-
-        public DatabaseUniqueKey( ) {
-            allowPageLocks = false;
-            allowRowLocks = false;
-            clustered = false;
-            dropExisting = false;
-            ignoreDuplicateKey = false;
-            isUnique = false;
-            isPadded = false;
-            online = false;
-            staticticsNoreCompute = false;
-            sortInTempDB = false;
-            online = false;
-            optimize_for_sequential_key = false;
-        }
-    }
-
-    public class DatabaseForeignkey {
-        public string name;
-        public string schema;
-        public string pschema;
-        public string ptable;
-        public string rschema;
-        public string rtable;
-        public string onUpdate;
-        public string onDelete;
-
-        public List<string> columns;
-        public List<string> rcolumns;
-
-        /**
-         * SQLite
-         **/
-        public DatabaseReferences references;
-
-        public DatabaseForeignkey( ) {
-
-        }
-    }
-
-    public class DatabaseReferences {
-        public string table;
-        public string column;
-        public string onUpdate;
-        public string onDelete;
-    }
-
-    public class DatabaseTableEntry {
-        public string schema;
-        public string name;
-
-        public DatabaseTableEntry( string schema, string name) {
-            this.schema = schema;
-            this.name = name;
-        }
-    }
-
-    public class ParameterList {
-        public string name;
-        public string type;
-
-        public ParameterList( string name, string type ) {
-            this.name = name;
-            this.type = type;
-        }
-    }
-
-    public class BackupSettings {
-        public bool backupData;
-        public bool backupSchema;
-        public string name;
-        public string schemaName;
-        public string type;
-
-        public BackupSettings( string type, string schemaName, string name, bool backupSchema, bool backupData ) {
-            this.name = name;
-            this.schemaName = schemaName;
-            this.type = type;
-            this.backupData = backupData;
-            this.backupSchema = backupSchema;
         }
     }
 }

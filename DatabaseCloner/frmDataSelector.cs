@@ -140,7 +140,7 @@ namespace DatabaseCloner {
 
             foreach( DataGridViewRow row in dgvTableList.Rows ) {
                 backup_settings.backupSettings.Add( 
-                    new BackupSettings( 
+                    new DatabaseBackupSettings( 
                         row.Cells[ 0 ].Value.ToString(), 
                         row.Cells[ 1 ].Value.ToString(), 
                         row.Cells[ 2 ].Value.ToString(),
